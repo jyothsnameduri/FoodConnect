@@ -22,15 +22,25 @@ function Router() {
     <>
       <Header />
       <Switch>
-        <Route path="/" component={HomePage} />
-        <Route path="/auth" component={AuthPage} />
-        <Route path="/feed" component={FeedPage} />
-        <Route path="/posts/:id" component={PostDetailPage} />
+        <Route path="/">
+          <HomePage />
+        </Route>
+        <Route path="/auth">
+          <AuthPage />
+        </Route>
+        <Route path="/feed">
+          <FeedPage />
+        </Route>
+        <Route path="/posts/:id">
+          <PostDetailPage />
+        </Route>
         <ProtectedRoute path="/posts/new" component={PostCreationPage} />
         <ProtectedRoute path="/profile" component={ProfilePage} />
         <ProtectedRoute path="/claims" component={ClaimsPage} />
         <ProtectedRoute path="/claims/:id" component={ClaimDetailPage} />
-        <Route component={NotFound} />
+        <Route>
+          <NotFound />
+        </Route>
       </Switch>
       <Footer />
     </>

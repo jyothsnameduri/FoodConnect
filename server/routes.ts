@@ -475,10 +475,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Only the post owner can generate handover codes" });
       }
       
-      // Only generate for approved or in-progress claims
-      if (claim.status !== "approved" && claim.status !== "in_progress") {
+      // Only generate for approved claims
+      if (claim.status !== "approved") {
         return res.status(400).json({ 
-          error: "Handover codes can only be generated for approved or in-progress claims" 
+          error: "Handover codes can only be generated for approved claims" 
         });
       }
       

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { FoodPost, InsertClaim } from "@shared/schema";
@@ -27,7 +27,7 @@ export function ClaimButton({ post }: ClaimButtonProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   // Check if the post belongs to the current user
   const isUsersPost = user?.id === post.userId;
@@ -53,7 +53,7 @@ export function ClaimButton({ post }: ClaimButtonProps) {
           ? "Your claim has been submitted. You'll be notified when the donor responds." 
           : "Your response has been submitted. You'll be notified when the requester responds.",
       });
-      navigate(`/claims/${data.id}`);
+      setLocation(`/claims/${data.id}`);
     },
     onError: (error: Error) => {
       toast({
@@ -72,7 +72,7 @@ export function ClaimButton({ post }: ClaimButtonProps) {
         description: "Please log in or create an account to claim this item.",
         variant: "destructive",
       });
-      navigate("/auth");
+      setLocation("/auth");
       return;
     }
     
