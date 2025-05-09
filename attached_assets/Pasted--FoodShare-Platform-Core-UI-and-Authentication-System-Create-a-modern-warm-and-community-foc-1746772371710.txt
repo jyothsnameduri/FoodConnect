@@ -1,0 +1,113 @@
+# FoodShare Platform - Core UI and Authentication System
+
+Create a modern, warm, and community-focused mobile-responsive web application for FoodShare, a platform that connects people with surplus food to those in need within local communities.
+
+## Brand Identity & Theme
+
+### Core Color Palette
+- **Primary Colors**:
+  * **Main Green** (#4CAF50): For primary actions, donation-related elements, headers, and key UI components
+  * **Warm Orange** (#FF9800): For community engagement elements and secondary highlights
+  * **Soft Blue** (#42A5F5): For request-related elements and tertiary actions
+  
+- **Secondary Colors**:
+  * **Earth Brown** (#8D6E63): For accents and footer elements
+  * **Harvest Yellow** (#FFC107): For success states and positive feedback
+
+- **Neutral Colors**:
+  * **Soft White** (#F5F5F5): Background color for lightness and clarity
+  * **Light Gray** (#E0E0E0): For subtle dividers and secondary backgrounds
+  * **Medium Gray** (#9E9E9E): For secondary text and inactive elements
+  * **Dark Charcoal** (#424242): For primary text and important information
+
+### Typography System
+- **Headers**: Montserrat (Bold/Semi-Bold)
+  * H1: 38px/42px mobile, 48px/52px desktop
+  * H2: 28px/32px mobile, 36px/40px desktop
+  * H3: 22px/26px mobile, 28px/32px desktop
+- **Body Text**: Open Sans (Regular/Light)
+  * Body: 16px/24px mobile, 18px/28px desktop
+  * Small/Caption: 14px/20px mobile, 14px/20px desktop
+- **Accents/Quotes**: Lora (Italic) for testimonials and impactful statements
+
+### Visual Elements
+- **Iconography**: Rounded, friendly line icons with consistent 2px stroke weight
+- **UI Elements**:
+  * Soft rounded corners (8px radius)
+  * Subtle drop shadows (4px blur, 15% opacity)
+  * Thin borders (1px) in light gray
+  * Clean internal padding (16px mobile, 24px desktop)
+- **Imagery**: Bright, natural-light photos showing diverse people sharing food, fresh produce, meals, and community connections
+
+## Core Layout Structure
+1. **Header**:
+   - Logo (simple food/sharing icon with "FoodShare" text)
+   - Navigation menu (Home/Feed, Map, My Activity, Profile)
+   - Authentication buttons (Sign Up/Login) when not logged in
+   - User menu dropdown when logged in
+
+2. **Footer**:
+   - Brief mission statement: "Reducing food waste, building community"
+   - Links: About, Contact, Privacy Policy, Terms of Service
+   - Social media icons
+   - Copyright information
+
+3. **Landing Page**:
+   - Hero section with compelling image of food sharing and tagline
+   - "How it works" section with icons for Donate, Request, Connect
+   - CTA buttons: "Donate Food" and "Find Food"
+   - Statistics counter (if available): "X meals shared in your community"
+   - Testimonial section with user stories
+   - FAQ accordion section
+
+## Authentication System
+1. **Login Screen**:
+   - Email/username and password fields
+   - "Remember me" checkbox
+   - Forgot password link
+   - Submit button
+   - "Sign up instead" link
+
+2. **Registration Screen**:
+   - Name fields
+   - Email field
+   - Password field with strength indicator
+   - Confirm password field
+   - Location field (ZIP/postal code) for initial area setup
+   - Checkbox for terms of service
+   - Submit button
+   - "Login instead" link
+
+3. **User Profile Page**:
+   - Profile picture upload/edit
+   - Name and contact information
+   - Default location settings
+   - Notification preferences
+   - Display of user statistics:
+     * Food items donated counter
+     * Food items received counter
+     * Star rating (average of received ratings)
+     * "Trusted User" badge (if applicable)
+   - History of donations and requests (with pagination)
+   - Option to deactivate account
+
+4. **Authentication States**:
+   - Show "Browse as Guest" option on landing page
+   - Public browsing allowed without login, but with CTAs to register
+   - Lock donation/request creation behind authentication wall
+   - Lock "claim" actions behind authentication wall
+
+## Responsive Design Requirements
+- Fully responsive from mobile (320px) to desktop (1920px+)
+- Mobile navigation collapses into hamburger menu
+- Touch-friendly buttons and interface elements (min 44x44px touch targets)
+- Simplified map view on smaller screens
+
+## Accessibility Features
+- WCAG 2.1 AA compliance
+- Proper heading hierarchy
+- Alt text for all images
+- Sufficient color contrast
+- Keyboard navigable interface
+- Screen reader friendly elements
+- Focus indicators for keyboard users
