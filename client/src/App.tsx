@@ -10,6 +10,8 @@ import ProfilePage from "@/pages/profile-page";
 import FeedPage from "@/pages/feed-page";
 import PostCreationPage from "@/pages/post-creation-page";
 import PostDetailPage from "@/pages/post-detail-page";
+import ClaimsPage from "@/pages/claims-page";
+import ClaimDetailPage from "@/pages/claim-detail-page";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { AuthProvider } from "@/hooks/use-auth";
 import { Header } from "@/components/layout/header";
@@ -26,6 +28,8 @@ function Router() {
         <Route path="/posts/:id" component={PostDetailPage} />
         <ProtectedRoute path="/posts/new" component={PostCreationPage} />
         <ProtectedRoute path="/profile" component={ProfilePage} />
+        <ProtectedRoute path="/claims" component={ClaimsPage} />
+        <ProtectedRoute path="/claims/:id" component={ClaimDetailPage} />
         <Route component={NotFound} />
       </Switch>
       <Footer />

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { FoodPost, FoodPostImage } from "@shared/schema";
 import { Button } from "@/components/ui/button";
+import { ClaimButton } from "@/components/post/claim-button";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -313,22 +314,9 @@ export default function PostDetailPage() {
               
               {/* Action buttons */}
               <div className="flex flex-wrap gap-3">
-                {post.status === 'available' && post.type === 'donation' && (
-                  <Button 
-                    className="bg-[#4CAF50] text-white hover:bg-[#388E3C]"
-                    onClick={handleClaim}
-                  >
-                    Claim This Item
-                  </Button>
-                )}
-                
-                {post.status === 'available' && post.type === 'request' && (
-                  <Button 
-                    className="bg-[#42A5F5] text-white hover:bg-[#1976D2]"
-                    onClick={handleClaim}
-                  >
-                    Respond to Request
-                  </Button>
+                {/* Replace the claim buttons with our new ClaimButton component */}
+                {post.status === 'available' && (
+                  <ClaimButton post={post} />
                 )}
                 
                 <Button 

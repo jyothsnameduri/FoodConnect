@@ -4,6 +4,7 @@ import { Sprout, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MobileMenu } from "./mobile-menu";
 import { useAuth } from "@/hooks/use-auth";
+import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
 
 export function Header() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -53,7 +54,10 @@ export function Header() {
           </Link>
           
           {user ? (
-            <div className="flex space-x-3">
+            <div className="flex space-x-3 items-center">
+              {/* Add notifications dropdown */}
+              <NotificationsDropdown />
+              
               <Button 
                 variant="outline" 
                 className="px-4 py-2 text-[#4CAF50] border border-[#4CAF50] rounded-soft hover:bg-[#4CAF50] hover:text-white transition-colors"
