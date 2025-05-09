@@ -34,6 +34,12 @@ export function Header() {
             Home
           </Link>
           <Link 
+            href="/feed" 
+            className={`font-opensans ${location === '/feed' ? 'text-[#4CAF50]' : 'text-[#424242] hover:text-[#4CAF50]'} transition-colors`}
+          >
+            Feed
+          </Link>
+          <Link 
             href="/map" 
             className={`font-opensans ${location === '/map' ? 'text-[#4CAF50]' : 'text-[#424242] hover:text-[#4CAF50]'} transition-colors`}
           >
