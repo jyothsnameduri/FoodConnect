@@ -40,7 +40,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon, ChevronLeft, Loader2, Plus, X } from "lucide-react";
+import { CalendarIcon, ChevronLeft, Loader2, Plus, X, Gift } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // Create a schema that extends the insertFoodPostSchema for the form
@@ -227,7 +227,11 @@ export default function PostCreationPage() {
       return;
     }
 
-    const apiData = convertFormToApiData(values);
+    const apiData = {
+  ...convertFormToApiData(values),
+  type: initialType,
+  status: "available"
+};
     createPostMutation.mutate(apiData);
   };
 
