@@ -45,8 +45,6 @@ import { useToast } from "@/hooks/use-toast";
 
 // Create a schema that extends the insertFoodPostSchema for the form
 const postFormSchema = z.object({
-  // Form fields
-  type: z.enum(["donation", "request"] as const),
   title: z.string().min(5, "Title must be at least 5 characters").max(100, "Title cannot exceed 100 characters"),
   description: z.string().min(10, "Description must be at least 10 characters").max(500, "Description cannot exceed 500 characters"),
   quantity: z.string().min(1, "Quantity is required"),
@@ -70,12 +68,12 @@ export default function PostCreationPage() {
   const search = useSearch();
   const searchParams = new URLSearchParams(search);
   const initialType = searchParams.get("type") === "request" ? "request" : "donation";
-  
+
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [step, setStep] = useState(1);
   const totalSteps = 2;
-  
+
   const { toast } = useToast();
 
   // Get enum values from the server if needed
@@ -96,7 +94,6 @@ export default function PostCreationPage() {
   const form = useForm<PostFormValues>({
     resolver: zodResolver(postFormSchema),
     defaultValues: {
-      type: initialType as "donation" | "request",
       title: "",
       description: "",
       quantity: "",
@@ -104,7 +101,7 @@ export default function PostCreationPage() {
       dietary: [],
       address: "",
       pickupStartDate: today,
-      pickupStartTime: "09:00",
+      pickupStartTime: ""09:00",
       pickupEndDate: today,
       pickupEndTime: "17:00",
       expiryDate: tomorrow,
@@ -116,7 +113,7 @@ export default function PostCreationPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
-      
+
       // Check if adding these files exceeds the 3 image limit
       if (imageFiles.length + newFiles.length > 3) {
         toast({
@@ -126,9 +123,9 @@ export default function PostCreationPage() {
         });
         return;
       }
-      
+
       setImageFiles(prev => [...prev, ...newFiles]);
-      
+
       // Create URLs for preview
       const newUrls = newFiles.map(file => URL.createObjectURL(file));
       setImageUrls(prev => [...prev, ...newUrls]);
@@ -138,7 +135,7 @@ export default function PostCreationPage() {
   // Remove an image
   const removeImage = (index: number) => {
     setImageFiles(prev => prev.filter((_, i) => i !== index));
-    
+
     // Clean up URL to prevent memory leaks
     URL.revokeObjectURL(imageUrls[index]);
     setImageUrls(prev => prev.filter((_, i) => i !== index));
@@ -153,31 +150,34 @@ export default function PostCreationPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          type: initialType, // Use initialType from the URL
+        }),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to create post");
       }
-      
+
       return await response.json();
     },
     onSuccess: (data) => {
       // Invalidate the posts query to refetch posts
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      
+
       // Upload images if any
       if (imageFiles.length > 0) {
         // In a real implementation, you would upload the images here
         console.log("Uploading images for post ID", data.id);
       }
-      
+
       toast({
         title: "Post created successfully!",
         description: "Your food post has been published.",
       });
-      
+
       // Redirect to the post or feed page
       setLocation("/feed");
     },
@@ -196,17 +196,16 @@ export default function PostCreationPage() {
     const pickupStartTime = new Date(values.pickupStartDate);
     const [startHours, startMinutes] = values.pickupStartTime.split(':').map(Number);
     pickupStartTime.setHours(startHours, startMinutes);
-    
+
     const pickupEndTime = new Date(values.pickupEndDate);
     const [endHours, endMinutes] = values.pickupEndTime.split(':').map(Number);
     pickupEndTime.setHours(endHours, endMinutes);
-    
+
     const expiryTime = new Date(values.expiryDate);
     const [expiryHours, expiryMinutes] = values.expiryTime.split(':').map(Number);
     expiryTime.setHours(expiryHours, expiryMinutes);
 
     return {
-      type: values.type,
       title: values.title,
       description: values.description,
       quantity: values.quantity,
@@ -228,7 +227,7 @@ export default function PostCreationPage() {
       setStep(step + 1);
       return;
     }
-    
+
     const apiData = convertFormToApiData(values);
     createPostMutation.mutate(apiData);
   };
@@ -239,7 +238,7 @@ export default function PostCreationPage() {
       setStep(step - 1);
     }
   };
-  
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
@@ -254,7 +253,7 @@ export default function PostCreationPage() {
       </div>
     );
   }
-  
+
   // For added safety, don't render the form if user is not authenticated
   if (!user) return null;
 
@@ -324,31 +323,7 @@ export default function PostCreationPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {step === 1 && (
                 <div className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="font-opensans font-semibold text-[#424242]">Post Type</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          disabled={createPostMutation.isPending}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="w-full border border-[#E0E0E0] rounded-soft focus:outline-none focus:border-[#4CAF50]">
-                              <SelectValue placeholder="Select the type of post" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="donation" className="text-[#4CAF50]">I want to donate food</SelectItem>
-                            <SelectItem value="request" className="text-[#42A5F5]">I'm looking for food</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  
 
                   <FormField
                     control={form.control}
@@ -360,7 +335,7 @@ export default function PostCreationPage() {
                         </FormLabel>
                         <FormControl>
                           <Input
-                            placeholder={field.value === "donation" 
+                            placeholder={initialType === "donation" 
                               ? "E.g. Homemade Cookies, Fresh Garden Tomatoes" 
                               : "E.g. Looking for bread, Need vegetables for soup"}
                             {...field}
@@ -732,7 +707,7 @@ export default function PostCreationPage() {
                     <FormDescription className="mb-2">
                       Add up to 3 photos of the food. Clear images help others decide if they want your food.
                     </FormDescription>
-                    
+
                     <div className="flex flex-wrap gap-2 mb-4">
                       {imageUrls.map((url, index) => (
                         <div key={index} className="relative w-24 h-24 border border-[#E0E0E0] rounded-soft overflow-hidden">
@@ -749,7 +724,7 @@ export default function PostCreationPage() {
                           </Button>
                         </div>
                       ))}
-                      
+
                       {imageUrls.length < 3 && (
                         <label className="flex items-center justify-center w-24 h-24 border border-dashed border-[#E0E0E0] rounded-soft cursor-pointer hover:border-[#4CAF50] transition-colors">
                           <div className="text-center">
@@ -793,11 +768,11 @@ export default function PostCreationPage() {
                     </Link>
                   </Button>
                 )}
-                
+
                 <Button
                   type="submit"
                   className={`${
-                    form.getValues("type") === "donation" 
+                    initialType === "donation" 
                       ? "bg-[#4CAF50] hover:bg-[#388E3C]" 
                       : "bg-[#42A5F5] hover:bg-[#1976D2]"
                   } text-white`}
