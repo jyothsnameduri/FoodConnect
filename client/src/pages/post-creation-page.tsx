@@ -40,7 +40,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon, ChevronLeft, Loader2 } from "lucide-react";
+import { CalendarIcon, ChevronLeft, Loader2, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // Create a schema that extends the insertFoodPostSchema for the form
