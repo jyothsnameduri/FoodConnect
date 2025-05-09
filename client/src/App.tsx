@@ -31,8 +31,12 @@ function Router() {
         <ProtectedRoute path="/claims/:id">
           <ClaimDetailPage />
         </ProtectedRoute>
-        <ProtectedRoute path="/claims" component={ClaimsPage} />
-        <ProtectedRoute path="/profile" component={ProfilePage} />
+        <ProtectedRoute path="/claims">
+          <ClaimsPage />
+        </ProtectedRoute>
+        <ProtectedRoute path="/profile">
+          <ProfilePage />
+        </ProtectedRoute>
         <Route path="/feed">
           <FeedPage />
         </Route>
