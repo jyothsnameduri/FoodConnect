@@ -184,8 +184,15 @@ export default function PostCreationPage() {
         
         expiryDate.setHours(hours, minutes, 0, 0);
         
+        // Create a Date object for expiryTime and ensure it's properly formatted
+        const expiryTime = new Date(expiryDate);
+        
+        // Format the date directly as a string in ISO format for consistent handling
+        const expiryTimeIso = expiryTime.toISOString();
+        
+        // Create a payload with all required fields including userId
         const payload = {
-          userId: currentUser.id, // Add the user ID from the current user
+          userId: currentUser.id, // Add userId explicitly as required by the server
           type: initialType,
           title: sanitizeString(formData.title),
           description: sanitizeString(formData.description),
@@ -195,34 +202,38 @@ export default function PostCreationPage() {
           address: sanitizeString(formData.address),
           latitude: formData.latitude || 37.7749,
           longitude: formData.longitude || -122.4194,
-          expiryTime: expiryDate // Add the combined date and time
+          expiryTime: expiryTimeIso
           // Note: We're not sending status as it has a default value in the schema
         };
         
         console.log("Simplified payload:", payload);
         
-        // Custom JSON serializer to handle Date objects properly
-        const customStringify = (obj: any) => {
-          return JSON.stringify(obj, (key, value) => {
-            // Convert Date objects to ISO strings
-            if (value instanceof Date) {
-              return value.toISOString();
-            }
-            return value;
-          });
-        };
-        
+        // Use standard JSON.stringify since we're already handling date conversion
         console.log("Final payload before stringify:", payload);
         
         // First create the post
-        const response = await fetch("/api/posts", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: customStringify(payload),
-          credentials: "include" // Important for sending cookies/session data
-        });
+        let response;
+        try {
+          // Make sure user is authenticated before making the request
+          if (!currentUser || !currentUser.id) {
+            throw new Error("You must be logged in to create a post");
+          }
+          
+          // Use a more robust fetch with proper error handling
+          response = await fetch("/api/posts", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+            credentials: "include" // Important for sending cookies/session data
+          });
+          
+          console.log("Server response status:", response.status);
+        } catch (fetchError) {
+          console.error("Network error during fetch:", fetchError);
+          throw new Error(`Network error: ${fetchError.message || 'Failed to connect to server'}`);
+        }
 
         if (!response.ok) {
           // Handle HTTP error responses
@@ -315,15 +326,9 @@ export default function PostCreationPage() {
         }
       };
 
-      // Convert dates and times with validation
-      const pickupStartTime = values.pickupStartDate && values.pickupStartTime ? 
-        combineDateAndTime(values.pickupStartDate, values.pickupStartTime) : new Date();
-      
-      const pickupEndTime = values.pickupEndDate && values.pickupEndTime ? 
-        combineDateAndTime(values.pickupEndDate, values.pickupEndTime) : new Date(pickupStartTime.getTime() + 8 * 60 * 60 * 1000);
-      
+      // Convert expiry date and time
       const expiryTime = values.expiryDate && values.expiryTime ? 
-        combineDateAndTime(values.expiryDate, values.expiryTime) : new Date(pickupStartTime.getTime() + 24 * 60 * 60 * 1000);
+        combineDateAndTime(values.expiryDate, values.expiryTime) : new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       // Create a payload that exactly matches the server's expected schema
       // Only include fields that are defined in the insertFoodPostSchema
@@ -671,131 +676,7 @@ export default function PostCreationPage() {
                 <div className="space-y-6">
                   {initialType === 'request' && (
                     <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="pickupStartDate"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel className="font-opensans font-semibold text-[#424242]">
-                                Pickup Start Date <span className="text-red-500">*</span>
-                              </FormLabel>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <FormControl>
-                                    <Button
-                                      variant="outline"
-                                      className="w-full pl-3 text-left font-normal border border-[#E0E0E0] rounded-soft"
-                                      disabled={createPostMutation.isPending}
-                                    >
-                                      {field.value ? (
-                                        format(field.value, "PPP")
-                                      ) : (
-                                        <span>Pick a date</span>
-                                      )}
-                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                    </Button>
-                                  </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar
-                                    mode="single"
-                                    selected={field.value}
-                                    onSelect={field.onChange}
-                                    disabled={(date) => date < today}
-                                    initialFocus
-                                  />
-                                </PopoverContent>
-                              </Popover>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="pickupStartTime"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="font-opensans font-semibold text-[#424242]">
-                                Pickup Start Time <span className="text-red-500">*</span>
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="time"
-                                  {...field}
-                                  className="w-full px-4 py-2 border border-[#E0E0E0] rounded-soft focus:outline-none focus:border-[#4CAF50]"
-                                  disabled={createPostMutation.isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="pickupEndDate"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel className="font-opensans font-semibold text-[#424242]">
-                                Pickup End Date <span className="text-red-500">*</span>
-                              </FormLabel>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <FormControl>
-                                    <Button
-                                      variant="outline"
-                                      className="w-full pl-3 text-left font-normal border border-[#E0E0E0] rounded-soft"
-                                      disabled={createPostMutation.isPending}
-                                    >
-                                      {field.value ? (
-                                        format(field.value, "PPP")
-                                      ) : (
-                                        <span>Pick a date</span>
-                                      )}
-                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                    </Button>
-                                  </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar
-                                    mode="single"
-                                    selected={field.value}
-                                    onSelect={field.onChange}
-                                    disabled={(date) => date < (form.getValues("pickupStartDate") || today)}
-                                    initialFocus
-                                  />
-                                </PopoverContent>
-                              </Popover>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="pickupEndTime"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="font-opensans font-semibold text-[#424242]">
-                                Pickup End Time <span className="text-red-500">*</span>
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="time"
-                                  {...field}
-                                  className="w-full px-4 py-2 border border-[#E0E0E0] rounded-soft focus:outline-none focus:border-[#4CAF50]"
-                                  disabled={createPostMutation.isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                      {/* Pickup date/time fields have been removed */}
                     </>
                   )}
 

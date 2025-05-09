@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "wouter";
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { FoodPost, FoodPostImage } from "@shared/schema";
@@ -54,14 +54,14 @@ export default function PostDetailPage() {
   });
 
   // Format dates for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (dateInput: string | Date) => {
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
     return format(date, "EEE, MMM d, yyyy 'at' h:mm a");
   };
 
   // Calculate time until expiry
-  const calculateExpiryTime = (expiryTime: string) => {
-    const expiryDate = new Date(expiryTime);
+  const calculateExpiryTime = (expiryTime: string | Date) => {
+    const expiryDate = typeof expiryTime === 'string' ? new Date(expiryTime) : expiryTime;
     const now = new Date();
     
     if (expiryDate < now) {
@@ -263,16 +263,7 @@ export default function PostDetailPage() {
                 
                 <div className="flex items-start">
                   <Calendar className="h-5 w-5 text-[#673AB7] mr-3 mt-0.5" />
-                  <div>
-                    <h3 className="font-montserrat font-semibold text-[#424242]">Pickup Window</h3>
-                    <p className="text-[#9E9E9E]">
-                      {post.pickupStartTime && formatDate(post.pickupStartTime)}
-                      <br />
-                      to
-                      <br />
-                      {post.pickupEndTime && formatDate(post.pickupEndTime)}
-                    </p>
-                  </div>
+                  {/* Pickup window section removed */}
                 </div>
                 
                 <div className="flex items-start">

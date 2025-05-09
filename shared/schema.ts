@@ -224,7 +224,26 @@ export const insertFoodPostSchema = createInsertSchema(foodPosts).omit({
   status: z.string().optional(),
   type: z.string().optional(),
   // Make expiryTime optional with a default value
-  expiryTime: z.date().optional().default(() => new Date(Date.now() + 172800000)), // Default to day after tomorrow
+  // Use a more robust preprocess to handle different date formats
+  expiryTime: z.preprocess(
+    (val) => {
+      // Handle string dates (ISO format from client)
+      if (typeof val === 'string') {
+        const date = new Date(val);
+        // Check if the date is valid
+        if (isNaN(date.getTime())) {
+          throw new Error('Invalid date format for expiryTime');
+        }
+        return date;
+      }
+      // Pass through Date objects
+      return val;
+    },
+    z.date({
+      required_error: "Expiry date is required",
+      invalid_type_error: "Expiry date must be a valid date"
+    }).optional().default(() => new Date(Date.now() + 172800000))
+  ), // Default to day after tomorrow
 });
 
 // Schema for updating a food post

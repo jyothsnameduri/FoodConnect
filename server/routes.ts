@@ -64,15 +64,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     validateBody(insertFoodPostSchema),
     async (req, res, next) => {
       try {
-        const userId = req.user!.id;
-        const post = await storage.createFoodPost({
+        // Log the request for debugging
+        console.log('POST /api/posts request body:', JSON.stringify(req.body));
+        console.log('User from session:', req.user);
+        
+        if (!req.user || !req.user.id) {
+          return res.status(401).json({ error: "Authentication required. Please log in again." });
+        }
+        
+        const userId = req.user.id;
+        
+        // Create a new object with all the required fields
+        const postData = {
           ...req.body,
           userId
-        });
+        };
+        
+        // Log the data being sent to storage
+        console.log('Creating post with data:', JSON.stringify(postData, (key, value) => {
+          if (value instanceof Date) {
+            return value.toISOString();
+          }
+          return value;
+        }));
+        
+        const post = await storage.createFoodPost(postData);
+        
+        // Log success
+        console.log('Post created successfully:', post.id);
         
         res.status(201).json(post);
       } catch (error) {
-        next(error);
+        console.error('Error creating post:', error);
+        
+        // Provide more detailed error information
+        if (error instanceof Error) {
+          res.status(400).json({ error: error.message });
+        } else {
+          next(error);
+        }
       }
     }
   );

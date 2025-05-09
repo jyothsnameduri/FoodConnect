@@ -140,17 +140,37 @@ export class DatabaseStorage implements IStorage {
     // Add default value for expiryTime if not provided
     const dayAfterTomorrow = new Date(Date.now() + 48 * 60 * 60 * 1000); // Add 48 hours
     
+    // Ensure expiryTime is a proper Date object
+    let expiryTime = dayAfterTomorrow;
+    if (post.expiryTime) {
+      // Handle both Date objects and ISO strings
+      expiryTime = typeof post.expiryTime === 'string' 
+        ? new Date(post.expiryTime) 
+        : post.expiryTime;
+    }
+    
     const postWithDefaults = {
       ...post,
-      // Only handle expiryTime now that pickupStartTime and pickupEndTime are removed
-      expiryTime: post.expiryTime || dayAfterTomorrow
+      expiryTime: expiryTime
     };
     
-    const [newPost] = await db
-      .insert(foodPosts)
-      .values(postWithDefaults)
-      .returning();
-    return newPost;
+    console.log('Creating food post with data:', JSON.stringify(postWithDefaults, (key, value) => {
+      if (value instanceof Date) {
+        return value.toISOString();
+      }
+      return value;
+    }));
+    
+    try {
+      const [newPost] = await db
+        .insert(foodPosts)
+        .values(postWithDefaults)
+        .returning();
+      return newPost;
+    } catch (error) {
+      console.error('Error creating food post:', error);
+      throw error;
+    }
   }
 
   async getFoodPost(id: number): Promise<FoodPost | undefined> {
