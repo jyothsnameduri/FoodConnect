@@ -64,8 +64,7 @@ export const foodPosts = pgTable("food_posts", {
   address: text("address").notNull(),
   latitude: doublePrecision("latitude"),
   longitude: doublePrecision("longitude"),
-  pickupStartTime: timestamp("pickup_start_time").notNull(),
-  pickupEndTime: timestamp("pickup_end_time").notNull(),
+  // Removed pickupStartTime and pickupEndTime fields
   expiryTime: timestamp("expiry_time").notNull(),
   status: text("status", { enum: postStatuses }).default("available").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -219,6 +218,13 @@ export const insertFoodPostSchema = createInsertSchema(foodPosts).omit({
   status: true,
   createdAt: true,
   updatedAt: true,
+  // Only expiryTime remains as a date field, but we'll make it optional
+  expiryTime: true,
+}).extend({
+  status: z.string().optional(),
+  type: z.string().optional(),
+  // Make expiryTime optional with a default value
+  expiryTime: z.date().optional().default(() => new Date(Date.now() + 172800000)), // Default to day after tomorrow
 });
 
 // Schema for updating a food post

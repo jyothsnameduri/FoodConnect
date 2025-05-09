@@ -137,9 +137,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createFoodPost(post: InsertFoodPost): Promise<FoodPost> {
+    // Add default value for expiryTime if not provided
+    const dayAfterTomorrow = new Date(Date.now() + 48 * 60 * 60 * 1000); // Add 48 hours
+    
+    const postWithDefaults = {
+      ...post,
+      // Only handle expiryTime now that pickupStartTime and pickupEndTime are removed
+      expiryTime: post.expiryTime || dayAfterTomorrow
+    };
+    
     const [newPost] = await db
       .insert(foodPosts)
-      .values(post)
+      .values(postWithDefaults)
       .returning();
     return newPost;
   }

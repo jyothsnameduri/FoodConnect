@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
-import { apiRequest } from "@/lib/queryClient";
-import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { 
@@ -194,6 +195,44 @@ interface ClaimCardProps {
 }
 
 function ClaimCard({ claim, type }: ClaimCardProps) {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Mutation to update claim status
+  const updateClaimMutation = useMutation({
+    mutationFn: async ({ status }: { status: ClaimStatus }) => {
+      const res = await apiRequest("PATCH", `/api/claims/${claim.id}`, {
+        status,
+      });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/claims"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts/claims"] });
+      toast({
+        title: "Claim updated",
+        description: "The claim status has been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update claim",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Handle approve claim
+  const handleApprove = () => {
+    updateClaimMutation.mutate({ status: "approved" });
+  };
+  
+  // Handle reject claim
+  const handleReject = () => {
+    updateClaimMutation.mutate({ status: "rejected" });
+  };
+  
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -219,7 +258,7 @@ function ClaimCard({ claim, type }: ClaimCardProps) {
           <div>
             <p className="text-sm font-medium">Note:</p>
             <p className="text-sm text-muted-foreground line-clamp-2">
-              {claim.note || "No note provided"}
+              {claim.message || "No note provided"}
             </p>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -227,7 +266,32 @@ function ClaimCard({ claim, type }: ClaimCardProps) {
           </p>
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex flex-col space-y-2">
+        {/* Show approval buttons for post owners with pending claims */}
+        {type === 'post-claim' && claim.status === 'pending' && (
+          <div className="flex w-full space-x-2 mb-2">
+            <Button 
+              variant="default" 
+              className="flex-1" 
+              onClick={handleApprove}
+              disabled={updateClaimMutation.isPending}
+            >
+              {updateClaimMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Approve
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex-1" 
+              onClick={handleReject}
+              disabled={updateClaimMutation.isPending}
+            >
+              Reject
+            </Button>
+          </div>
+        )}
+        
         <Button asChild className="w-full">
           <Link href={`/claims/${claim.id}`}>View Details</Link>
         </Button>

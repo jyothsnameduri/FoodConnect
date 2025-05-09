@@ -12,6 +12,7 @@ import PostCreationPage from "@/pages/post-creation-page";
 import PostDetailPage from "@/pages/post-detail-page";
 import ClaimsPage from "@/pages/claims-page";
 import ClaimDetailPage from "@/pages/claim-detail-page";
+import NotificationsPage from "@/pages/notifications-page";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { AuthProvider } from "@/hooks/use-auth";
 import { Header } from "@/components/layout/header";
@@ -34,6 +35,9 @@ function Router() {
         <ProtectedRoute path="/claims">
           <ClaimsPage />
         </ProtectedRoute>
+        <ProtectedRoute path="/notifications">
+          <NotificationsPage />
+        </ProtectedRoute>
         <ProtectedRoute path="/profile">
           <ProfilePage />
         </ProtectedRoute>
@@ -49,7 +53,11 @@ function Router() {
         <Route path="/donate">
           {() => (window.location.href = "/posts/new?type=donation")}
         </Route>
-        <Route>
+        <Route path="/find">
+          {() => (window.location.href = "/feed")}
+        </Route>
+        {/* Add any other redirect routes here */}
+        <Route path="*">
           <NotFound />
         </Route>
       </Switch>

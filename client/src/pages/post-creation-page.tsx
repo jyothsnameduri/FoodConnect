@@ -48,13 +48,10 @@ const postFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(100, "Title cannot exceed 100 characters"),
   description: z.string().min(10, "Description must be at least 10 characters").max(500, "Description cannot exceed 500 characters"),
   quantity: z.string().min(1, "Quantity is required"),
-  category: z.enum(foodCategories as [string, ...string[]]),
-  dietary: z.array(z.enum(dietaryOptions as [string, ...string[]])).optional(),
+  category: z.enum((foodCategories as unknown) as [string, ...string[]]),
+  dietary: z.array(z.enum((dietaryOptions as unknown) as [string, ...string[]])).optional(),
   address: z.string().min(5, "Address is required"),
-  pickupStartDate: z.date({ required_error: "Pickup start date is required" }),
-  pickupStartTime: z.string(),
-  pickupEndDate: z.date({ required_error: "Pickup end date is required" }),
-  pickupEndTime: z.string(),
+  // Removed pickup date/time fields
   expiryDate: z.date({ required_error: "Expiry date is required" }),
   expiryTime: z.string(),
   // Image is handled separately
@@ -100,10 +97,7 @@ export default function PostCreationPage() {
       category: "meal",
       dietary: [],
       address: "",
-      pickupStartDate: today,
-      pickupStartTime: "09:00",
-      pickupEndDate: today,
-      pickupEndTime: "17:00",
+      // Only keeping expiry date/time fields
       expiryDate: tomorrow,
       expiryTime: "23:59",
     },
@@ -144,24 +138,133 @@ export default function PostCreationPage() {
   // Create food post mutation
   const createPostMutation = useMutation({
     mutationFn: async (formData: any) => {
-      // First create the post
-      const response = await fetch("/api/posts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...formData,
-          type: initialType, // Use initialType from the URL
-        }),
-      });
+      try {
+        // First, fetch the current user to get their ID
+        const userResponse = await fetch("/api/user", {
+          credentials: "include"
+        });
+        
+        if (!userResponse.ok) {
+          throw new Error("You must be logged in to create a post");
+        }
+        
+        const currentUser = await userResponse.json();
+        console.log("Current user:", currentUser);
+        
+        if (!currentUser || !currentUser.id) {
+          throw new Error("Unable to get user information. Please log in again.");
+        }
+        
+        console.log("Form data being submitted:", formData);
+        
+        // Helper function to sanitize string values by removing extra quotes
+        const sanitizeString = (str: string): string => {
+          if (!str) return '';
+          // Remove any surrounding quotes
+          return str.replace(/^"|^'|"$|'$/g, '').trim();
+        };
+        
+        // Create a simplified payload with ONLY the fields expected by the server schema
+        // This is critical to avoid validation errors
+        
+        // Combine expiryDate and expiryTime into a single Date object
+        const expiryDate = new Date(formData.expiryDate || new Date());
+        
+        // Safely handle expiryTime - default to end of day if not provided
+        let hours = 23;
+        let minutes = 59;
+        
+        if (formData.expiryTime && typeof formData.expiryTime === 'string') {
+          const timeParts = formData.expiryTime.split(':');
+          if (timeParts.length === 2) {
+            hours = parseInt(timeParts[0], 10) || 0;
+            minutes = parseInt(timeParts[1], 10) || 0;
+          }
+        }
+        
+        expiryDate.setHours(hours, minutes, 0, 0);
+        
+        const payload = {
+          userId: currentUser.id, // Add the user ID from the current user
+          type: initialType,
+          title: sanitizeString(formData.title),
+          description: sanitizeString(formData.description),
+          quantity: sanitizeString(formData.quantity),
+          category: formData.category,
+          dietary: Array.isArray(formData.dietary) ? formData.dietary : [],
+          address: sanitizeString(formData.address),
+          latitude: formData.latitude || 37.7749,
+          longitude: formData.longitude || -122.4194,
+          expiryTime: expiryDate // Add the combined date and time
+          // Note: We're not sending status as it has a default value in the schema
+        };
+        
+        console.log("Simplified payload:", payload);
+        
+        // Custom JSON serializer to handle Date objects properly
+        const customStringify = (obj: any) => {
+          return JSON.stringify(obj, (key, value) => {
+            // Convert Date objects to ISO strings
+            if (value instanceof Date) {
+              return value.toISOString();
+            }
+            return value;
+          });
+        };
+        
+        console.log("Final payload before stringify:", payload);
+        
+        // First create the post
+        const response = await fetch("/api/posts", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: customStringify(payload),
+          credentials: "include" // Important for sending cookies/session data
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to create post");
+        if (!response.ok) {
+          // Handle HTTP error responses
+          if (response.status === 401) {
+            throw new Error("You must be logged in to create a post");
+          } else {
+            const text = await response.text();
+            console.log("Server error response:", text);
+            
+            try {
+              const errorData = JSON.parse(text);
+              
+              // Handle validation errors more specifically
+              if (errorData.error && Array.isArray(errorData.error)) {
+                const errorMessages = errorData.error.map((err: any) => {
+                  if (err.path && err.path.length > 0) {
+                    return `${err.path.join('.')}: ${err.message}`;
+                  }
+                  return err.message || 'Unknown validation error';
+                }).join('; ');
+                
+                throw new Error(`Validation error: ${errorMessages}`);
+              } else if (errorData.error) {
+                throw new Error(typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error));
+              } else if (errorData.message) {
+                throw new Error(errorData.message);
+              } else {
+                throw new Error("Failed to create post: Unknown server error");
+              }
+            } catch (parseError) {
+              // If we can't parse the error as JSON, use the status text
+              console.error("Error parsing server response:", parseError);
+              throw new Error(`Server error: ${response.status} ${response.statusText || "Failed to create post"}`);
+            }
+          }
+        }
+
+        return await response.json();
+      } catch (error) {
+        console.error("Error in post creation:", error);
+        throw error;
       }
-
-      return await response.json();
     },
     onSuccess: (data) => {
       // Invalidate the posts query to refetch posts
@@ -182,6 +285,9 @@ export default function PostCreationPage() {
       setLocation("/feed");
     },
     onError: (error: Error) => {
+      // Just use the error message directly since we've already formatted it properly in mutationFn
+      console.error("Post creation error:", error);
+      
       toast({
         title: "Failed to create post",
         description: error.message,
@@ -192,32 +298,60 @@ export default function PostCreationPage() {
 
   // Convert form data to API format
   const convertFormToApiData = (values: PostFormValues) => {
-    // Helper function to combine date and time
-    const combineDateAndTime = (date: Date, timeStr: string) => {
-      const newDate = new Date(date);
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      newDate.setHours(hours, minutes, 0, 0); // Set seconds and milliseconds to 0
-      return newDate;
-    };
+    try {
+      // Helper function to combine date and time
+      const combineDateAndTime = (date: Date, timeStr: string) => {
+        try {
+          const newDate = new Date(date);
+          const [hours, minutes] = timeStr.split(':').map(Number);
+          newDate.setHours(hours, minutes, 0, 0); // Set seconds and milliseconds to 0
+          return newDate;
+        } catch (error) {
+          console.error('Error combining date and time:', error);
+          // Return current date + 1 day as fallback
+          const fallback = new Date();
+          fallback.setDate(fallback.getDate() + 1);
+          return fallback;
+        }
+      };
 
-    // Convert dates and times
-    const pickupStartTime = combineDateAndTime(values.pickupStartDate, values.pickupStartTime);
-    const pickupEndTime = combineDateAndTime(values.pickupEndDate, values.pickupEndTime);
-    const expiryTime = combineDateAndTime(values.expiryDate, values.expiryTime);
+      // Convert dates and times with validation
+      const pickupStartTime = values.pickupStartDate && values.pickupStartTime ? 
+        combineDateAndTime(values.pickupStartDate, values.pickupStartTime) : new Date();
+      
+      const pickupEndTime = values.pickupEndDate && values.pickupEndTime ? 
+        combineDateAndTime(values.pickupEndDate, values.pickupEndTime) : new Date(pickupStartTime.getTime() + 8 * 60 * 60 * 1000);
+      
+      const expiryTime = values.expiryDate && values.expiryTime ? 
+        combineDateAndTime(values.expiryDate, values.expiryTime) : new Date(pickupStartTime.getTime() + 24 * 60 * 60 * 1000);
 
-    return {
-      title: values.title,
-      description: values.description,
-      quantity: values.quantity,
-      category: values.category,
-      dietary: values.dietary || [],
-      address: values.address,
-      latitude: 37.7749, // Default latitude (can be updated with real geocoding)
-      longitude: -122.4194, // Default longitude (can be updated with real geocoding)
-      pickupStartTime: pickupStartTime.toISOString(),
-      pickupEndTime: pickupEndTime.toISOString(),
-      expiryTime: expiryTime.toISOString(),
-    };
+      // Create a payload that exactly matches the server's expected schema
+      // Only include fields that are defined in the insertFoodPostSchema
+      
+      // Helper function to remove extra quotes from string values
+      const sanitizeString = (str: string): string => {
+        if (!str) return '';
+        // Remove any surrounding quotes
+        return str.replace(/^"|^'|"$|'$/g, '').trim();
+      };
+      
+      return {
+        type: initialType, // Use the type from URL parameter
+        title: sanitizeString(values.title),
+        description: sanitizeString(values.description),
+        quantity: sanitizeString(values.quantity),
+        category: values.category,
+        dietary: Array.isArray(values.dietary) ? values.dietary : [],
+        address: sanitizeString(values.address),
+        latitude: 37.7749, // Default latitude
+        longitude: -122.4194 // Default longitude
+        // Date fields have been removed from the schema requirements
+        // Note: We're not including status as it has a default value in the schema
+      };
+    } catch (error) {
+      console.error('Error in convertFormToApiData:', error);
+      throw new Error('Failed to process form data. Please check all fields and try again.');
+    }
   };
 
   // Form submission
@@ -227,12 +361,33 @@ export default function PostCreationPage() {
       return;
     }
 
-    const apiData = {
-  ...convertFormToApiData(values),
-  type: initialType,
-  status: "available"
-};
-    createPostMutation.mutate(apiData);
+    // Validate required fields before submission
+    if (!values.title || !values.description || !values.quantity || !values.category || !values.address) {
+      toast({
+        title: "Missing required fields",
+        description: "Please fill in all required fields before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Create API data with proper formatting
+      const apiData = convertFormToApiData(values);
+      
+      // Log the data being submitted for debugging
+      console.log("Submitting post data:", apiData);
+      
+      // Submit the form data
+      createPostMutation.mutate(apiData);
+    } catch (error) {
+      console.error("Error preparing form data:", error);
+      toast({
+        title: "Form Error",
+        description: error instanceof Error ? error.message : "Failed to process form data",
+        variant: "destructive",
+      });
+    }
   };
 
   // Move to previous step

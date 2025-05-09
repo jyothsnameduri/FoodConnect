@@ -307,6 +307,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Create a new claim
+  app.post("/api/claims", isAuthenticated, validateBody(insertClaimSchema), async (req, res, next) => {
+    try {
+      const { postId, status, message, contactPreference } = req.body;
+      
+      // Verify the post exists
+      const post = await storage.getFoodPost(postId);
+      if (!post) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+      
+      // Check if post is available
+      if (post.status !== "available") {
+        return res.status(400).json({ error: "This post is no longer available" });
+      }
+      
+      // Check if user is trying to claim their own post
+      if (post.userId === req.user!.id) {
+        return res.status(400).json({ error: "You cannot claim your own post" });
+      }
+      
+      // Check if user already has a pending or approved claim for this post
+      const existingClaims = await storage.getClaims({ 
+        postId, 
+        claimerId: req.user!.id,
+        status: ["pending", "approved"]
+      });
+      
+      if (existingClaims.length > 0) {
+        return res.status(400).json({ error: "You already have a pending or approved claim for this post" });
+      }
+      
+      // Create the claim
+      const claim = await storage.createClaim({
+        postId,
+        claimerId: req.user!.id,
+        status: "pending",
+        message,
+        contactPreference: contactPreference || "in_app"
+      });
+      
+      // Create notification for post owner
+      await storage.createNotification({
+        userId: post.userId,
+        type: "claim",
+        title: "New claim on your post",
+        message: `Someone has claimed your ${post.title}`,
+        relatedId: claim.id,
+        relatedType: "claim"
+      });
+      
+      res.status(201).json(claim);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
   // Get all claims for a post
   app.get("/api/posts/:id/claims", isAuthenticated, async (req, res, next) => {
     try {

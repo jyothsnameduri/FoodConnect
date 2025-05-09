@@ -9,9 +9,16 @@ import { foodCategories, dietaryOptions } from "@shared/schema";
 
 interface FilterPanelProps {
   onClose: () => void;
+  onApplyFilters: (filters: {
+    distance: number;
+    categories: string[];
+    dietary: string[];
+    expiryWithin?: number; // Days until expiry
+    type?: 'all' | 'donation' | 'request';
+  }) => void;
 }
 
-export function FilterPanel({ onClose }: FilterPanelProps) {
+export function FilterPanel({ onClose, onApplyFilters }: FilterPanelProps) {
   // Get enum values from the server if needed
   const { data: enums } = useQuery({
     queryKey: ["/api/enums"],
@@ -21,6 +28,8 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
   const [distance, setDistance] = useState<number>(5);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
+  const [expiryWithin, setExpiryWithin] = useState<number>(7); // Default to 7 days
+  const [postType, setPostType] = useState<'all' | 'donation' | 'request'>('all');
 
   // Category toggle handler
   const toggleCategory = (category: string) => {
@@ -49,8 +58,24 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
 
   // Apply filters
   const applyFilters = () => {
-    // Here you would apply the filters to the parent component
-    console.log("Applied filters:", { distance, selectedCategories, selectedDietary });
+    // Call the parent component's filter handler with all filter values
+    onApplyFilters({
+      distance,
+      categories: selectedCategories,
+      dietary: selectedDietary,
+      expiryWithin,
+      type: postType
+    });
+    
+    // Log for debugging
+    console.log("Applied filters:", { 
+      distance, 
+      categories: selectedCategories, 
+      dietary: selectedDietary,
+      expiryWithin,
+      type: postType
+    });
+    
     onClose();
   };
 
