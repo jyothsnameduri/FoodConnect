@@ -101,7 +101,7 @@ export default function PostCreationPage() {
       dietary: [],
       address: "",
       pickupStartDate: today,
-      pickupStartTime: ""09:00",
+      pickupStartTime: "09:00",
       pickupEndDate: today,
       pickupEndTime: "17:00",
       expiryDate: tomorrow,
