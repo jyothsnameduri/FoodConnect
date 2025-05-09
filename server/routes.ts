@@ -51,7 +51,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       foodPostTypes,
       foodCategories,
       dietaryOptions,
-      postStatuses
+      postStatuses,
+      claimStatuses
     });
   });
 
@@ -242,6 +243,539 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.deleteFoodPostImage(imageId);
       res.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Claim routes
+  // Create a claim for a food post
+  app.post(
+    "/api/posts/:id/claim",
+    isAuthenticated,
+    validateBody(insertClaimSchema),
+    async (req, res, next) => {
+      try {
+        const postId = Number(req.params.id);
+        const post = await storage.getFoodPost(postId);
+        
+        if (!post) {
+          return res.status(404).json({ error: "Post not found" });
+        }
+        
+        // Check if post is available
+        if (post.status !== "available") {
+          return res.status(400).json({ error: "This post is not available for claiming" });
+        }
+        
+        // Check if user is not the post owner
+        if (post.userId === req.user!.id) {
+          return res.status(400).json({ error: "You cannot claim your own post" });
+        }
+        
+        // Create the claim
+        const claim = await storage.createClaim({
+          ...req.body,
+          postId,
+          claimerId: req.user!.id
+        });
+        
+        res.status(201).json(claim);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+  
+  // Get all claims for a user
+  app.get("/api/claims", isAuthenticated, async (req, res, next) => {
+    try {
+      const { status, limit, offset } = req.query;
+      
+      const options: any = {
+        claimerId: req.user!.id
+      };
+      
+      if (status) options.status = status;
+      if (limit) options.limit = Number(limit);
+      if (offset) options.offset = Number(offset);
+      
+      const claims = await storage.getClaims(options);
+      res.json(claims);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Get all claims for a post
+  app.get("/api/posts/:id/claims", isAuthenticated, async (req, res, next) => {
+    try {
+      const postId = Number(req.params.id);
+      const post = await storage.getFoodPost(postId);
+      
+      if (!post) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+      
+      // Only the post owner can see all claims
+      if (post.userId !== req.user!.id) {
+        return res.status(403).json({ error: "You can only view claims for your own posts" });
+      }
+      
+      const claims = await storage.getClaims({ postId });
+      res.json(claims);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Get a claim by ID
+  app.get("/api/claims/:id", isAuthenticated, async (req, res, next) => {
+    try {
+      const claimId = Number(req.params.id);
+      const claim = await storage.getClaim(claimId);
+      
+      if (!claim) {
+        return res.status(404).json({ error: "Claim not found" });
+      }
+      
+      // Get post to check ownership
+      const post = await storage.getFoodPost(claim.postId);
+      
+      if (!post) {
+        return res.status(404).json({ error: "Associated post not found" });
+      }
+      
+      // Only the post owner or the claimer can view the claim
+      if (post.userId !== req.user!.id && claim.claimerId !== req.user!.id) {
+        return res.status(403).json({ 
+          error: "You don't have permission to view this claim" 
+        });
+      }
+      
+      res.json(claim);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Update a claim
+  app.patch(
+    "/api/claims/:id",
+    isAuthenticated,
+    validateBody(updateClaimSchema.partial()),
+    async (req, res, next) => {
+      try {
+        const claimId = Number(req.params.id);
+        const claim = await storage.getClaim(claimId);
+        
+        if (!claim) {
+          return res.status(404).json({ error: "Claim not found" });
+        }
+        
+        // Get post to check ownership
+        const post = await storage.getFoodPost(claim.postId);
+        
+        if (!post) {
+          return res.status(404).json({ error: "Associated post not found" });
+        }
+        
+        // Check permissions based on the update being performed
+        if (req.body.status) {
+          // Status updates have specific permissions
+          if (post.userId === req.user!.id) {
+            // Post owner can approve or reject or complete
+            if (
+              req.body.status !== "approved" && 
+              req.body.status !== "rejected" && 
+              req.body.status !== "completed"
+            ) {
+              return res.status(403).json({ 
+                error: "Post owners can only approve, reject, or complete claims" 
+              });
+            }
+          } else if (claim.claimerId === req.user!.id) {
+            // Claimer can cancel or mark as in_progress or complete
+            if (
+              req.body.status !== "cancelled" && 
+              req.body.status !== "in_progress" && 
+              req.body.status !== "completed"
+            ) {
+              return res.status(403).json({ 
+                error: "Claimers can only cancel, mark as in-progress, or complete claims" 
+              });
+            }
+          } else {
+            return res.status(403).json({ 
+              error: "You don't have permission to update this claim" 
+            });
+          }
+        } else {
+          // Other updates can only be done by the claimer
+          if (claim.claimerId !== req.user!.id) {
+            return res.status(403).json({ 
+              error: "You can only update your own claims" 
+            });
+          }
+        }
+        
+        const updatedClaim = await storage.updateClaim(claimId, req.body);
+        res.json(updatedClaim);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+  
+  // Delete a claim
+  app.delete("/api/claims/:id", isAuthenticated, async (req, res, next) => {
+    try {
+      const claimId = Number(req.params.id);
+      const claim = await storage.getClaim(claimId);
+      
+      if (!claim) {
+        return res.status(404).json({ error: "Claim not found" });
+      }
+      
+      // Only the claimer can delete their claim
+      if (claim.claimerId !== req.user!.id) {
+        return res.status(403).json({ error: "You can only delete your own claims" });
+      }
+      
+      // Only delete pending or rejected claims
+      if (claim.status !== "pending" && claim.status !== "rejected") {
+        return res.status(400).json({ error: "Only pending or rejected claims can be deleted" });
+      }
+      
+      await storage.deleteClaim(claimId);
+      res.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Generate handover code
+  app.post("/api/claims/:id/handover-code", isAuthenticated, async (req, res, next) => {
+    try {
+      const claimId = Number(req.params.id);
+      const claim = await storage.getClaim(claimId);
+      
+      if (!claim) {
+        return res.status(404).json({ error: "Claim not found" });
+      }
+      
+      const post = await storage.getFoodPost(claim.postId);
+      
+      if (!post) {
+        return res.status(404).json({ error: "Associated post not found" });
+      }
+      
+      // Only the post owner can generate codes
+      if (post.userId !== req.user!.id) {
+        return res.status(403).json({ error: "Only the post owner can generate handover codes" });
+      }
+      
+      // Only generate for approved or in-progress claims
+      if (claim.status !== "approved" && claim.status !== "in_progress") {
+        return res.status(400).json({ 
+          error: "Handover codes can only be generated for approved or in-progress claims" 
+        });
+      }
+      
+      const code = await storage.generateHandoverCode(claimId);
+      res.json({ code });
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Verify handover code
+  app.post("/api/claims/:id/verify-handover", isAuthenticated, async (req, res, next) => {
+    try {
+      const claimId = Number(req.params.id);
+      const claim = await storage.getClaim(claimId);
+      
+      if (!claim) {
+        return res.status(404).json({ error: "Claim not found" });
+      }
+      
+      // Only the claimer can verify codes
+      if (claim.claimerId !== req.user!.id) {
+        return res.status(403).json({ error: "Only the claimer can verify handover codes" });
+      }
+      
+      // Validate the code
+      const schema = z.object({
+        code: z.string()
+      });
+      
+      try {
+        req.body = schema.parse(req.body);
+      } catch (error) {
+        return res.status(400).json({ error: "Invalid request body" });
+      }
+      
+      const isValid = await storage.verifyHandoverCode(claimId, req.body.code);
+      
+      if (isValid) {
+        res.json({ success: true, message: "Handover verified successfully" });
+      } else {
+        res.status(400).json({ error: "Invalid handover code" });
+      }
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Rating routes
+  // Rate a claim
+  app.post(
+    "/api/claims/:id/rate",
+    isAuthenticated,
+    validateBody(insertRatingSchema),
+    async (req, res, next) => {
+      try {
+        const claimId = Number(req.params.id);
+        const claim = await storage.getClaim(claimId);
+        
+        if (!claim) {
+          return res.status(404).json({ error: "Claim not found" });
+        }
+        
+        const post = await storage.getFoodPost(claim.postId);
+        
+        if (!post) {
+          return res.status(404).json({ error: "Associated post not found" });
+        }
+        
+        // Verify that claim is completed
+        if (claim.status !== "completed") {
+          return res.status(400).json({ error: "Only completed claims can be rated" });
+        }
+        
+        // Determine who is rating whom
+        const fromUserId = req.user!.id;
+        let toUserId: number;
+        
+        if (fromUserId === post.userId) {
+          // Post owner rating the claimer
+          toUserId = claim.claimerId;
+        } else if (fromUserId === claim.claimerId) {
+          // Claimer rating the post owner
+          toUserId = post.userId;
+        } else {
+          return res.status(403).json({ error: "You don't have permission to rate this claim" });
+        }
+        
+        // Check if already rated
+        const existingRatings = await storage.getRatingsByClaimId(claimId);
+        const alreadyRated = existingRatings.some(r => r.fromUserId === fromUserId);
+        
+        if (alreadyRated) {
+          return res.status(400).json({ error: "You have already rated this claim" });
+        }
+        
+        // Create the rating
+        const rating = await storage.createRating({
+          ...req.body,
+          claimId,
+          fromUserId,
+          toUserId
+        });
+        
+        res.status(201).json(rating);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+  
+  // Get ratings for a claim
+  app.get("/api/claims/:id/ratings", async (req, res, next) => {
+    try {
+      const claimId = Number(req.params.id);
+      const ratings = await storage.getRatingsByClaimId(claimId);
+      res.json(ratings);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Get ratings for a user
+  app.get("/api/users/:id/ratings", async (req, res, next) => {
+    try {
+      const userId = Number(req.params.id);
+      const ratings = await storage.getRatingsByUserId(userId);
+      res.json(ratings);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Notification routes
+  // Get notifications for the current user
+  app.get("/api/notifications", isAuthenticated, async (req, res, next) => {
+    try {
+      const options: any = {};
+      
+      if (req.query.isRead) {
+        options.isRead = req.query.isRead === 'true';
+      }
+      
+      if (req.query.type) {
+        options.type = req.query.type;
+      }
+      
+      if (req.query.limit) {
+        options.limit = Number(req.query.limit);
+      }
+      
+      if (req.query.offset) {
+        options.offset = Number(req.query.offset);
+      }
+      
+      const notifications = await storage.getNotifications(req.user!.id, options);
+      res.json(notifications);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Mark a notification as read
+  app.patch("/api/notifications/:id/read", isAuthenticated, async (req, res, next) => {
+    try {
+      const notificationId = Number(req.params.id);
+      
+      // TODO: Add check to make sure user owns the notification
+      
+      const success = await storage.markNotificationAsRead(notificationId);
+      res.json({ success });
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Mark all notifications as read
+  app.patch("/api/notifications/read-all", isAuthenticated, async (req, res, next) => {
+    try {
+      const success = await storage.markAllNotificationsAsRead(req.user!.id);
+      res.json({ success });
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Delete a notification
+  app.delete("/api/notifications/:id", isAuthenticated, async (req, res, next) => {
+    try {
+      const notificationId = Number(req.params.id);
+      
+      // TODO: Add check to make sure user owns the notification
+      
+      const success = await storage.deleteNotification(notificationId);
+      
+      if (success) {
+        res.status(204).end();
+      } else {
+        res.status(404).json({ error: "Notification not found" });
+      }
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Message routes
+  // Get messages for a claim
+  app.get("/api/claims/:id/messages", isAuthenticated, async (req, res, next) => {
+    try {
+      const claimId = Number(req.params.id);
+      const claim = await storage.getClaim(claimId);
+      
+      if (!claim) {
+        return res.status(404).json({ error: "Claim not found" });
+      }
+      
+      const post = await storage.getFoodPost(claim.postId);
+      
+      if (!post) {
+        return res.status(404).json({ error: "Associated post not found" });
+      }
+      
+      // Only allow post owner or claimer to view messages
+      if (post.userId !== req.user!.id && claim.claimerId !== req.user!.id) {
+        return res.status(403).json({ error: "You don't have permission to view these messages" });
+      }
+      
+      const messages = await storage.getMessages(claimId);
+      res.json(messages);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Send a message
+  app.post(
+    "/api/claims/:id/messages",
+    isAuthenticated,
+    validateBody(insertMessageSchema),
+    async (req, res, next) => {
+      try {
+        const claimId = Number(req.params.id);
+        const claim = await storage.getClaim(claimId);
+        
+        if (!claim) {
+          return res.status(404).json({ error: "Claim not found" });
+        }
+        
+        const post = await storage.getFoodPost(claim.postId);
+        
+        if (!post) {
+          return res.status(404).json({ error: "Associated post not found" });
+        }
+        
+        // Only allow post owner or claimer to send messages
+        if (post.userId !== req.user!.id && claim.claimerId !== req.user!.id) {
+          return res.status(403).json({ error: "You don't have permission to send messages for this claim" });
+        }
+        
+        // Determine recipient
+        const senderId = req.user!.id;
+        const receiverId = senderId === post.userId ? claim.claimerId : post.userId;
+        
+        // Create message
+        const message = await storage.createMessage({
+          ...req.body,
+          claimId,
+          senderId,
+          receiverId
+        });
+        
+        res.status(201).json(message);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+  
+  // Mark a message as read
+  app.patch("/api/messages/:id/read", isAuthenticated, async (req, res, next) => {
+    try {
+      const messageId = Number(req.params.id);
+      
+      // TODO: Add check to make sure user is the receiver
+      
+      const success = await storage.markMessageAsRead(messageId);
+      res.json({ success });
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Get unread message count
+  app.get("/api/messages/unread-count", isAuthenticated, async (req, res, next) => {
+    try {
+      const count = await storage.getUnreadMessageCount(req.user!.id);
+      res.json({ count });
     } catch (error) {
       next(error);
     }
