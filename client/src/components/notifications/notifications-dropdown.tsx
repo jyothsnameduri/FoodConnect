@@ -1,215 +1,162 @@
-import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import {
+import { Bell, Check, Clock, Loader2, Package, ShoppingBag, User, Star, X } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { formatDistanceToNow } from "date-fns";
+import { Notification } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
+import { 
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { 
-  Bell, 
-  Loader2, 
-  CheckCircle2, 
-  X, 
-  MessageCircle,
-  AlertTriangle,
-  Star,
-  ThumbsUp,
-  ShoppingBag
-} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useLocation } from "wouter";
-import { format, formatDistanceToNow } from "date-fns";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 
 export function NotificationsDropdown() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [, navigate] = useLocation();
-  
-  // Fetch notifications
-  const {
-    data: notifications,
-    isLoading,
-    refetch
-  } = useQuery({
-    queryKey: ["/api/notifications"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/notifications?limit=10");
-      return await res.json();
-    },
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Fetch notifications for the current user
+  const { data: notifications, isLoading } = useQuery<Notification[]>({
+    queryKey: ['/api/notifications'],
     enabled: !!user,
+    staleTime: 30000, // 30 seconds
   });
-  
-  // Mark notification as read
-  const markAsReadMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiRequest("PATCH", `/api/notifications/${id}/read`);
-      return await res.json();
-    },
-    onSuccess: () => {
-      refetch();
-    },
-  });
-  
-  // Mark all as read
+
+  // Mark all notifications as read mutation
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("PATCH", "/api/notifications/read-all");
+      const res = await apiRequest("POST", "/api/notifications/mark-all-read");
       return await res.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Marked all as read",
-        description: "All notifications have been marked as read.",
-      });
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to mark notifications as read",
+        description: error.message || "Failed to mark notifications as read.",
         variant: "destructive",
       });
-    },
+    }
   });
-  
-  // Handle notification click
-  const handleNotificationClick = (notification: any) => {
-    // Mark as read
-    if (!notification.isRead) {
-      markAsReadMutation.mutate(notification.id);
+
+  // Mark notification as read when dropdown is opened
+  useEffect(() => {
+    if (isOpen && notifications?.some(n => !n.isRead)) {
+      markAllAsReadMutation.mutate();
     }
-    
-    // Navigate based on type
-    if (notification.type === "claim_created" || 
-        notification.type === "claim_updated" ||
-        notification.type === "claim_rated") {
-      navigate(`/claims/${notification.resourceId}`);
-    } else if (notification.type === "new_message") {
-      navigate(`/claims/${notification.resourceId}`);
-    } else if (notification.type === "post_updated") {
-      navigate(`/posts/${notification.resourceId}`);
-    }
-  };
-  
-  // Get icon based on notification type
+  }, [isOpen, notifications]);
+
+  // Count unread notifications
+  const unreadCount = notifications?.filter(notification => !notification.isRead).length || 0;
+
+  // Get notification icon based on type
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case "claim_created":
-        return <ShoppingBag className="h-4 w-4 text-blue-500" />;
-      case "claim_updated":
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case "claim_rated":
-        return <Star className="h-4 w-4 text-yellow-500" />;
-      case "new_message":
-        return <MessageCircle className="h-4 w-4 text-indigo-500" />;
-      case "post_updated":
-        return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+      case 'claim_created':
+        return <ShoppingBag className="h-4 w-4 text-[#4CAF50]" />;
+      case 'claim_approved':
+        return <Check className="h-4 w-4 text-[#4CAF50]" />;
+      case 'claim_rejected':
+        return <X className="h-4 w-4 text-[#F44336]" />;
+      case 'post_claimed':
+        return <Package className="h-4 w-4 text-[#42A5F5]" />;
+      case 'rating_received':
+        return <Star className="h-4 w-4 text-[#FFC107]" />;
       default:
-        return <Bell className="h-4 w-4 text-primary" />;
+        return <Bell className="h-4 w-4 text-[#9E9E9E]" />;
     }
   };
-  
-  // Get notification text from type and resourceId
-  const getNotificationText = (notification: any) => {
-    switch (notification.type) {
-      case "claim_created":
-        return "New claim on your post";
-      case "claim_updated":
-        return "A claim has been updated";
-      case "claim_rated":
-        return "Someone rated your exchange";
-      case "new_message":
-        return "New message received";
-      case "post_updated":
-        return "A post you claimed was updated";
-      default:
-        return notification.content || "New notification";
-    }
-  };
-  
-  const unreadCount = notifications?.filter((n: any) => !n.isRead).length || 0;
-  
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
-          <Bell />
+          <Bell className="h-5 w-5 text-[#424242]" />
           {unreadCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center"
+            <Badge 
+              className="absolute -top-1 -right-1 px-[0.35rem] py-[0.15rem] min-w-[1.2rem] min-h-[1.2rem] flex items-center justify-center bg-[#F44336] text-white border-0 text-[0.7rem]"
             >
               {unreadCount}
             </Badge>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-80" align="end">
-        <DropdownMenuLabel className="flex justify-between items-center">
-          <span>Notifications</span>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs"
+      <DropdownMenuContent align="end" className="w-[320px] p-0">
+        <div className="flex justify-between items-center p-3 bg-[#FAFAFA]">
+          <h3 className="font-opensans font-semibold text-[#424242]">Notifications</h3>
+          {notifications && notifications.length > 0 && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
               onClick={() => markAllAsReadMutation.mutate()}
               disabled={markAllAsReadMutation.isPending}
+              className="h-8 text-xs"
             >
               {markAllAsReadMutation.isPending ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                "Mark all as read"
-              )}
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              ) : null}
+              Mark all as read
             </Button>
           )}
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        </div>
         
-        {isLoading ? (
-          <div className="py-6 flex justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : notifications?.length > 0 ? (
-          <DropdownMenuGroup>
-            {notifications.map((notification: any) => (
-              <DropdownMenuItem
-                key={notification.id}
-                className={`py-3 px-4 cursor-pointer ${!notification.isRead ? 'bg-accent/50' : ''}`}
-                onClick={() => handleNotificationClick(notification)}
-              >
-                <div className="flex gap-3 items-start w-full">
-                  <div className="flex-shrink-0 mt-0.5">
+        <div className="max-h-[350px] overflow-y-auto">
+          {isLoading ? (
+            <div className="flex justify-center items-center p-6">
+              <Loader2 className="h-6 w-6 animate-spin text-[#9E9E9E]" />
+            </div>
+          ) : !notifications || notifications.length === 0 ? (
+            <div className="text-center py-8 px-4 text-[#9E9E9E]">
+              <Bell className="h-10 w-10 mx-auto mb-2 text-[#E0E0E0]" />
+              <p>No notifications yet</p>
+              <p className="text-sm mt-1">Check back later for updates</p>
+            </div>
+          ) : (
+            notifications.map((notification) => (
+              <DropdownMenuItem key={notification.id} asChild>
+                <Link 
+                  href={notification.link || '#'}
+                  className={cn(
+                    "flex items-start gap-3 p-3 cursor-pointer hover:bg-[#F5F5F5]",
+                    !notification.isRead && "bg-[#E8F5E9]"
+                  )}
+                >
+                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-[#F5F5F5] rounded-full">
                     {getNotificationIcon(notification.type)}
                   </div>
-                  <div className="flex-1 space-y-1">
-                    <p className={`text-sm ${!notification.isRead ? 'font-medium' : ''}`}>
-                      {getNotificationText(notification)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-[#424242] whitespace-normal break-words">
                       {notification.content}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <div className="flex items-center mt-1 text-xs text-[#9E9E9E]">
+                      <Clock className="h-3 w-3 mr-1" />
                       {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
-                    </p>
+                    </div>
                   </div>
-                  {!notification.isRead && (
-                    <div className="h-2 w-2 rounded-full bg-primary"></div>
-                  )}
-                </div>
+                </Link>
               </DropdownMenuItem>
-            ))}
-          </DropdownMenuGroup>
-        ) : (
-          <div className="py-6 text-center text-muted-foreground">
-            <p>No notifications</p>
-          </div>
+            ))
+          )}
+        </div>
+        
+        {notifications && notifications.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/notifications" className="flex justify-center p-2 text-sm text-[#4CAF50]">
+                View all notifications
+              </Link>
+            </DropdownMenuItem>
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
