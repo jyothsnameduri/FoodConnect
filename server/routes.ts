@@ -7,10 +7,15 @@ import {
   insertFoodPostSchema, 
   updateFoodPostSchema, 
   insertFoodPostImageSchema,
+  insertClaimSchema,
+  updateClaimSchema,
+  insertRatingSchema,
+  insertMessageSchema,
   foodPostTypes,
   foodCategories,
   dietaryOptions,
-  postStatuses
+  postStatuses,
+  claimStatuses
 } from "@shared/schema";
 
 // Middleware to check if user is authenticated

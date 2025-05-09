@@ -1,0 +1,162 @@
+# FoodShare Platform - Claim Flow, Status Tracking, and Notifications
+
+Design the interaction flows for claiming, tracking, and completing food donations and requests on the FoodShare platform, including the notification system and reputation management. Apply the established theme and visual identity consistently.
+
+## Theme Application for Interactive Features
+
+- **Status Indicators**:
+  * Use the theme palette for status visualization:
+    - Green (#4CAF50): Completed states, successful actions
+    - Orange (#FF9800): In-progress states, pending actions
+    - Blue (#42A5F5): Request-related status
+    - Yellow (#FFC107): Alert states, expiring soon
+    - Gray (#9E9E9E): Inactive or expired states
+  
+- **Visual Feedback Elements**:
+  * Success animations with the Harvest Yellow (#FFC107)
+  * Timeline visualization with colored progression dots
+  * Custom badges using the color system (green for donation achievements, blue for request achievements)
+  * Rating stars with custom food-themed design in Warm Orange (#FF9800)
+
+- **Notification Design**:
+  * Color-coded by urgency and type
+  * Consistent icon system matching the established visual language
+  * Clean, focused layout with Montserrat for headers and Open Sans for content
+
+## Claim and Confirmation Flow
+
+1. **Claim Initiation**:
+   - For donations: "Claim This Food" button with confirmation modal
+   - For requests: "Fulfill This Request" button with confirmation modal
+   - Confirmation dialog includes:
+     * Brief summary of the post
+     * Pickup time selection based on available windows
+     * Optional message to sender
+     * Contact preference toggle (in-app messaging or phone)
+     * Acknowledgment checkbox ("I commit to picking up/providing this food")
+
+2. **Owner Approval Interface**:
+   - Notification of new claim
+   - Claim details view showing:
+     * Claimer profile with rating and history
+     * Proposed pickup time
+     * Claimer's message (if any)
+   - Action buttons:
+     * "Approve" button
+     * "Decline" button
+     * "Message" button to discuss details
+   - Option to set auto-approval for trusted users
+
+3. **Claim Management Dashboard**:
+   - "My Claims" section with tabs:
+     * "Pending" (awaiting approval)
+     * "Approved" (ready for pickup)
+     * "Completed" (past transactions)
+     * "Declined" (rejected claims)
+   - Each claim shows:
+     * Post title and thumbnail
+     * Status badge
+     * Countdown to pickup time
+     * Quick action buttons appropriate to status
+
+4. **Pickup Coordination**:
+   - In-app messaging between claimer and poster
+   - Location sharing options
+   - Pickup instructions display
+   - "I've Arrived" button for claimer
+   - "Food Handed Over" button for poster
+
+## Status Tracking System
+
+1. **Post Status Timeline**:
+   - Visual timeline showing progression:
+     * Posted (initial state)
+     * Claimed (awaiting pickup)
+     * In Progress (pickup occurring)
+     * Completed (successful handover)
+     * Alternative states: Expired, Cancelled
+   - Current state highlighted with timestamp
+   - Progress indicator (e.g., circular progress, milestone dots)
+
+2. **Status Change Triggers**:
+   - Clear, prominent buttons for status changes:
+     * Poster: "Mark as Picked Up" button
+     * Claimer: "Confirm Receipt" button
+   - Automatic status updates:
+     * System-triggered expiry when deadline passes
+     * Reminder notifications before auto-expiry
+
+3. **Status Verification**:
+   - QR code generation for contact-free verification
+   - Optional PIN code verification method
+   - Proximity detection option ("Nearby" badge)
+
+4. **Completion Process**:
+   - Handover confirmation screen
+   - Optional photo verification
+   - Thank you message animation
+   - Optional: Immediate rating prompt or "Rate Later" option
+   - Completion certificate/stats update
+
+## Notification System
+
+1. **In-App Notification Center**:
+   - Notification bell icon with unread counter
+   - Notification list with categories:
+     * "Activity" (claims, approvals)
+     * "Messages" (in-app communications)
+     * "Alerts" (expiring posts, reminders)
+     * "System" (announcements, updates)
+   - Read/unread status indicators
+   - Notification preference settings
+   - Bulk actions (mark all read, delete, etc.)
+
+2. **Push Notification Design**:
+   - Critical notifications:
+     * "Your donation was claimed!"
+     * "Your claim was approved!"
+     * "Pickup reminder: 1 hour until scheduled pickup"
+     * "Your post expires in 24 hours"
+   - Action buttons within notifications
+   - Notification grouping strategy
+
+3. **Email Notification Templates**:
+   - Welcome email
+   - Claim notification email
+   - Pickup reminder email
+   - Rating request email
+   - Weekly digest option
+
+## Reputation and Rating System
+
+1. **Post-Completion Rating**:
+   - Star rating interface (1-5 stars)
+   - Optional feedback categories:
+     * For donations: Food quality, Description accuracy, Communication, Pickup experience
+     * For requests: Punctuality, Communication, Respectfulness
+   - Free-text feedback field
+   - "Skip Rating" option
+   - "Report Issue" option for problematic interactions
+
+2. **User Reputation Display**:
+   - Profile badge system:
+     * "New User" (default)
+     * "Trusted Donor" (5+ successful donations)
+     * "Reliable Recipient" (5+ successful pickups)
+     * "Community Champion" (25+ transactions)
+   - Average star rating display
+   - Transaction counter (donations made/received)
+   - Positive feedback percentage
+
+3. **Reputation Dashboard**:
+   - Personal stats and progress visualization
+   - Badges earned and badges to unlock
+   - Rating breakdown chart
+   - Feed of received feedback (with option to respond)
+   - Impact metrics (e.g., "You've helped share 100 meals!")
+
+4. **Community Leaderboard**:
+   - Top contributors in local area
+   - Weekly/monthly recognition
+   - Shareable achievements
+   - Community impact stats
