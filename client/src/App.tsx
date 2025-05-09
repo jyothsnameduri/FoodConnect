@@ -22,22 +22,26 @@ function Router() {
     <>
       <Header />
       <Switch>
-        <Route path="/">
-          <HomePage />
+        <ProtectedRoute path="/posts/new">
+          <PostCreationPage />
+        </ProtectedRoute>
+        <Route path="/posts/:id">
+          <PostDetailPage />
+        </Route>
+        <ProtectedRoute path="/claims/:id">
+          <ClaimDetailPage />
+        </ProtectedRoute>
+        <ProtectedRoute path="/claims" component={ClaimsPage} />
+        <ProtectedRoute path="/profile" component={ProfilePage} />
+        <Route path="/feed">
+          <FeedPage />
         </Route>
         <Route path="/auth">
           <AuthPage />
         </Route>
-        <Route path="/feed">
-          <FeedPage />
+        <Route path="/">
+          <HomePage />
         </Route>
-        <Route path="/posts/:id">
-          <PostDetailPage />
-        </Route>
-        <ProtectedRoute path="/posts/new" component={PostCreationPage} />
-        <ProtectedRoute path="/profile" component={ProfilePage} />
-        <ProtectedRoute path="/claims" component={ClaimsPage} />
-        <ProtectedRoute path="/claims/:id" component={ClaimDetailPage} />
         <Route>
           <NotFound />
         </Route>
