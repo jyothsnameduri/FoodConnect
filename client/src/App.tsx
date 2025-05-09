@@ -46,6 +46,9 @@ function Router() {
         <Route path="/">
           <HomePage />
         </Route>
+        <Route path="/donate">
+          {() => (window.location.href = "/posts/new?type=donation")}
+        </Route>
         <Route>
           <NotFound />
         </Route>
