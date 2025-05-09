@@ -322,7 +322,7 @@ export default function PostCreationPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {step === 1 && (
                 <div className="space-y-6">
-                  
+
 
                   <FormField
                     control={form.control}
