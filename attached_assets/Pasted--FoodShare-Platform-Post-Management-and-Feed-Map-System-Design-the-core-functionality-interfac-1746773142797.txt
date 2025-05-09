@@ -1,0 +1,111 @@
+# FoodShare Platform - Post Management and Feed/Map System
+
+Design the core functionality interfaces for the FoodShare platform, focusing on creating, viewing, and interacting with food donation and request posts. Follow the established theme palette and visual identity guidelines.
+
+## Theme Implementation
+
+- **Color Coding System**:
+  * Use Main Green (#4CAF50) for donation-related elements and positive actions
+  * Use Soft Blue (#42A5F5) for request-related elements and support actions
+  * Use Warm Orange (#FF9800) for community, sharing, and engagement elements
+
+- **UI Components**:
+  * **Cards**: 8px rounded corners, subtle drop shadows, thin borders, clear color-coding for donation vs request posts
+  * **Buttons**: 
+    - Primary: Filled green with white text
+    - Secondary: Outlined with corresponding color
+    - Tertiary: Text-only with color accent
+  * **Icon System**: Consistent rounded line icons with 2px stroke weight
+
+- **Animation Guidelines**:
+  * Subtle scale effect on interactive elements (1.02x)
+  * Smooth color transitions (300ms)
+  * Gentle loading animations with pulsing effect
+
+## Post Creation Flow
+
+1. **Universal Action Button**:
+   - Floating action button ("+") in bottom right corner
+   - Expands to show "Donate Food" and "Request Food" options
+
+2. **Post Type Selection**:
+   - Toggle between "Donate" and "Request" options
+   - Visual distinction between the two modes (color coding: green for donate, blue for request)
+
+3. **Post Creation Form**:
+   - Required fields (with validation):
+     * Title/Short description (max 100 chars)
+     * Detailed description (max 500 chars)
+     * Quantity/Servings
+     * Food category dropdown (Meal, Groceries, Produce, Baked Goods, Other)
+     * Dietary info checkboxes (Vegetarian, Vegan, Gluten-Free, Contains Nuts, etc.)
+     * Pickup location (text address AND/OR map pin drop)
+     * Pickup time window (date range picker)
+     * Expiry date/time picker
+     * Photo upload option (up to 3 images)
+   - Form progression indicator
+   - Preview option before final submission
+   - "Post Now" button and "Save Draft" option
+
+4. **Post Edit and Management**:
+   - Edit option for existing posts (before claimed)
+   - Cancel/Delete post option with confirmation dialog
+   - Extend expiry date option
+
+## Feed and Browse System
+
+1. **Main Feed View**:
+   - Card-based design for each post
+   - Cards display:
+     * Post type indicator (Donate/Request)
+     * Title and brief description (truncated)
+     * Distance from user (e.g., "0.5 miles away")
+     * Thumbnail image (if available)
+     * Expiry countdown ("Expires in 2 days")
+     * Quick-action buttons (Claim, Save, Share)
+     * Status indicator (Available, Claimed, Completed, Expired)
+   - Infinite scroll pagination
+   - Pull-to-refresh functionality
+
+2. **Feed Filtering and Search**:
+   - Search bar with autocomplete
+   - Quick filter tabs: "All", "Donations", "Requests", "Expiring Soon", "Nearby"
+   - Advanced filter panel:
+     * Distance slider (0.5-10 miles)
+     * Food category checkboxes
+     * Dietary restrictions checkboxes
+     * Date range picker
+     * "Clear All" and "Apply Filters" buttons
+
+3. **Post Detail View**:
+   - Full post information display
+   - Image gallery (if multiple photos)
+   - Map showing precise pickup location
+   - Poster profile snippet with rating
+   - Status timeline visualization
+   - Action buttons:
+     * "Claim" button (for donations)
+     * "Offer" button (for requests)
+     * "Share" button
+     * "Report" option (flag inappropriate content)
+   - Related/nearby posts section
+
+4. **Map View**:
+   - Interactive map with clustered pins
+   - Different pin colors for donations vs. requests
+   - Current location indicator with permission request
+   - Map information panel (collapsible)
+   - Pin click opens mini-card preview
+   - List/Map toggle button
+   - Current map bounds used for fetching relevant posts
+   - Zoom and pan controls
+   - Filters carried over from feed view
+   - "View posts in this area" button when panning
+
+5. **Empty and Loading States**:
+   - Skeleton loading animation for feed
+   - Map loading indicator
+   - Empty feed states with helpful messages:
+     * No posts matching filters: "No matches found. Try adjusting your filters."
+     * No posts in area: "Be the first to share food in this area!"
+   - First-time user guidance overlays
