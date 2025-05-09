@@ -8,11 +8,14 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FilterPanel } from "@/components/feed/filter-panel";
+import Link from "next/link";
 
 export default function FeedPage() {
   const [activeView, setActiveView] = useState<"feed" | "map">("feed");
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [filterType, setFilterType] = useState<"all" | "donations" | "requests">("all");
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +57,7 @@ export default function FeedPage() {
                 <Search className="h-5 w-5" />
               </Button>
             </form>
-            
+
             <Button
               variant="outline"
               className="ml-2 border border-[#E0E0E0] text-[#424242] hover:bg-[#F5F5F5]"
@@ -87,7 +90,7 @@ export default function FeedPage() {
                 Map View
               </TabsTrigger>
             </TabsList>
-            
+
             <div className="flex space-x-2">
               <Button
                 variant="outline"
@@ -113,7 +116,7 @@ export default function FeedPage() {
           <TabsContent value="feed" className="mt-0">
             <FeedView />
           </TabsContent>
-          
+
           <TabsContent value="map" className="mt-0">
             <MapView />
           </TabsContent>
