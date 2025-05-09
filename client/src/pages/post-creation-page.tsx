@@ -192,18 +192,18 @@ export default function PostCreationPage() {
 
   // Convert form data to API format
   const convertFormToApiData = (values: PostFormValues) => {
-    // Convert dates and times to ISO strings
-    const pickupStartTime = new Date(values.pickupStartDate);
-    const [startHours, startMinutes] = values.pickupStartTime.split(':').map(Number);
-    pickupStartTime.setHours(startHours, startMinutes);
+    // Helper function to combine date and time
+    const combineDateAndTime = (date: Date, timeStr: string) => {
+      const newDate = new Date(date);
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      newDate.setHours(hours, minutes, 0, 0); // Set seconds and milliseconds to 0
+      return newDate;
+    };
 
-    const pickupEndTime = new Date(values.pickupEndDate);
-    const [endHours, endMinutes] = values.pickupEndTime.split(':').map(Number);
-    pickupEndTime.setHours(endHours, endMinutes);
-
-    const expiryTime = new Date(values.expiryDate);
-    const [expiryHours, expiryMinutes] = values.expiryTime.split(':').map(Number);
-    expiryTime.setHours(expiryHours, expiryMinutes);
+    // Convert dates and times
+    const pickupStartTime = combineDateAndTime(values.pickupStartDate, values.pickupStartTime);
+    const pickupEndTime = combineDateAndTime(values.pickupEndDate, values.pickupEndTime);
+    const expiryTime = combineDateAndTime(values.expiryDate, values.expiryTime);
 
     return {
       title: values.title,
@@ -212,9 +212,8 @@ export default function PostCreationPage() {
       category: values.category,
       dietary: values.dietary || [],
       address: values.address,
-      // These are placeholders for real geocoding
-      latitude: 37.7749,
-      longitude: -122.4194,
+      latitude: 37.7749, // Default latitude (can be updated with real geocoding)
+      longitude: -122.4194, // Default longitude (can be updated with real geocoding)
       pickupStartTime: pickupStartTime.toISOString(),
       pickupEndTime: pickupEndTime.toISOString(),
       expiryTime: expiryTime.toISOString(),
