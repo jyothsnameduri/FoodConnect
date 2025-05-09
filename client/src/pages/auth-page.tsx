@@ -42,18 +42,35 @@ export default function AuthPage() {
             <div className="flex flex-col md:flex-row">
               {/* Left side: Form */}
               <div className="w-full md:w-1/2 p-6 md:p-8">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-8">
-                    <TabsTrigger value="login" className="font-montserrat font-semibold">Log In</TabsTrigger>
-                    <TabsTrigger value="signup" className="font-montserrat font-semibold">Sign Up</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="login">
-                    <LoginForm />
-                  </TabsContent>
-                  <TabsContent value="signup">
-                    <RegisterForm />
-                  </TabsContent>
-                </Tabs>
+                <div className="flex flex-col items-center">
+                  {activeTab === "login" ? (
+                    <>
+                      <LoginForm />
+                      <p className="mt-6 text-sm text-gray-600">
+                        Don't have an account?{" "}
+                        <button 
+                          onClick={() => setActiveTab("signup")}
+                          className="text-[#4CAF50] hover:underline"
+                        >
+                          Sign Up
+                        </button>
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <RegisterForm />
+                      <p className="mt-6 text-sm text-gray-600">
+                        Already have an account?{" "}
+                        <button 
+                          onClick={() => setActiveTab("login")}
+                          className="text-[#4CAF50] hover:underline"
+                        >
+                          Log In
+                        </button>
+                      </p>
+                    </>
+                  )}
+                </div>
               </div>
               
               {/* Right side: Hero Image & Info */}
