@@ -49,8 +49,13 @@ export default function PostDetailPage() {
   });
 
   // Fetch post images
-  const { data: images } = useQuery<FoodPostImage[]>({
+  const { data: images, isLoading: imagesLoading } = useQuery<FoodPostImage[]>({
     queryKey: [`/api/posts/${id}/images`],
+    queryFn: async () => {
+      const res = await fetch(`/api/posts/${id}/images`);
+      if (!res.ok) throw new Error('Failed to fetch post images');
+      return res.json();
+    },
     enabled: !!post,
   });
 
@@ -88,6 +93,11 @@ export default function PostDetailPage() {
     }
   };
 
+  // Default image when no images are available
+  const defaultImage = post?.type === 'donation' 
+    ? "https://images.unsplash.com/photo-1592424002053-21f369ad7fdb?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400&q=80"
+    : "https://images.unsplash.com/photo-1546552768-9e3a5c5a8ffd?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400&q=80";
+
   // Handle image navigation
   const nextImage = () => {
     if (images && images.length > 0) {
@@ -101,10 +111,7 @@ export default function PostDetailPage() {
     }
   };
 
-  // Placeholder images when no images are available
-  const defaultImage = post?.type === 'donation' 
-    ? "https://images.unsplash.com/photo-1592424002053-21f369ad7fdb?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400&q=80"
-    : "https://images.unsplash.com/photo-1546552768-9e3a5c5a8ffd?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400&q=80";
+  // The defaultImage variable is already defined above
 
   // Handle claiming a post
   const handleClaim = () => {
@@ -183,11 +190,17 @@ export default function PostDetailPage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Image gallery */}
             <div className="relative bg-[#F5F5F5] rounded-soft overflow-hidden h-[300px] md:h-[400px]">
-              <img 
-                src={images && images.length > 0 ? images[currentImageIndex].imageUrl : defaultImage} 
-                alt={post.title} 
-                className="w-full h-full object-cover" 
-              />
+              {imagesLoading ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#4CAF50]" />
+                </div>
+              ) : (
+                <img 
+                  src={images && images.length > 0 ? images[currentImageIndex].imageUrl : defaultImage} 
+                  alt={post.title} 
+                  className="w-full h-full object-cover" 
+                />
+              )}
               
               {images && images.length > 1 && (
                 <>

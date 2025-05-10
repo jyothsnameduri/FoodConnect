@@ -1,10 +1,22 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+// Get current file path and directory in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Serve uploaded files from the uploads directory
+const uploadsPath = path.join(__dirname, "..", "uploads");
+app.use("/uploads", express.static(uploadsPath));
+console.log(`Serving uploaded files from: ${uploadsPath}`);
 
 app.use((req, res, next) => {
   const start = Date.now();

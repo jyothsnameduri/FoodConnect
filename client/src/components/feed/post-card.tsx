@@ -1,10 +1,11 @@
 import { Link } from "wouter";
-import { FoodPost } from "@shared/schema";
+import { FoodPost, FoodPostImage } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, CalendarDays } from "lucide-react";
+import { MapPin, Clock, CalendarDays, ImageIcon } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ClaimButton } from "@/components/post/claim-button";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface PostCardProps {
   post: FoodPost;
@@ -31,6 +32,25 @@ export function PostCard({ post }: PostCardProps) {
     return `Expires ${formatDistanceToNow(expiryDate, { addSuffix: true })}`;
   };
 
+  // Fetch post images
+  const { data: postImages, isLoading: imagesLoading } = useQuery<FoodPostImage[]>({
+    queryKey: [`/api/posts/${post.id}/images`],
+    queryFn: async () => {
+      const res = await fetch(`/api/posts/${post.id}/images`);
+      if (!res.ok) throw new Error('Failed to fetch post images');
+      return res.json();
+    },
+  });
+
+  // Get the first image URL or use a placeholder
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (postImages && postImages.length > 0) {
+      setImageUrl(postImages[0].imageUrl);
+    }
+  }, [postImages]);
+  
   // Placeholder image when no images are available
   const defaultImage = post.type === 'donation' 
     ? "https://images.unsplash.com/photo-1592424002053-21f369ad7fdb?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400&q=80"
@@ -76,11 +96,17 @@ export function PostCard({ post }: PostCardProps) {
     <div className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl border border-[#F0F0F0] group flex flex-col justify-between">
       <div>
       <div className="relative">
-        <img 
-          src={defaultImage} 
-          alt={post.title} 
+        {imagesLoading ? (
+          <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
+            <ImageIcon className="w-8 h-8 text-gray-400 animate-pulse" />
+          </div>
+        ) : (
+          <img 
+            src={imageUrl || defaultImage} 
+            alt={post.title} 
             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" 
-        />
+          />
+        )}
           <div className="absolute top-2 right-2 z-10">
           <span 
             className={`

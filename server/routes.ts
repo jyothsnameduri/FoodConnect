@@ -20,6 +20,8 @@ import {
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 
 // Middleware to check if user is authenticated
 const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
@@ -43,6 +45,10 @@ const validateBody = (schema: z.ZodType<any, any>) => {
     }
   };
 };
+
+// Get current file path and directory in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Multer setup for food post images
 const uploadDir = path.join(__dirname, "..", "uploads", "food-images");
@@ -638,10 +644,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(
     "/api/claims/:id/rate",
     isAuthenticated,
-    validateBody(insertRatingSchema),
     async (req, res, next) => {
       try {
-        const claimId = Number(req.params.id);
+        console.log('Rating submission received:', req.body);
+        
+        // Extract and validate required fields
+        const { rating, comment, categories, claimId: bodyClaimId, fromUserId: bodyFromUserId, toUserId } = req.body;
+        
+        // Use the claim ID from the URL parameter or body
+        const claimId = Number(req.params.id || bodyClaimId);
+        
+        if (isNaN(claimId)) {
+          return res.status(400).json({ error: "Invalid claim ID" });
+        }
+        
+        console.log(`Processing rating for claim ID: ${claimId}, rating value: ${rating}`);
+        
         const claim = await storage.getClaim(claimId);
         
         if (!claim) {
@@ -659,38 +677,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "Only completed claims can be rated" });
         }
         
-        // Determine who is rating whom
+        // Use the authenticated user's ID
         const fromUserId = req.user!.id;
-        let toUserId: number;
         
-        if (fromUserId === post.userId) {
-          // Post owner rating the claimer
-          toUserId = claim.claimerId;
-        } else if (fromUserId === claim.claimerId) {
-          // Claimer rating the post owner
-          toUserId = post.userId;
+        // If toUserId is provided in the request, use it, otherwise determine it
+        let finalToUserId: number;
+        
+        if (toUserId) {
+          finalToUserId = Number(toUserId);
+          
+          // Verify the toUserId is valid for this claim
+          if (finalToUserId !== post.userId && finalToUserId !== claim.claimerId) {
+            return res.status(400).json({ error: "Invalid recipient for rating" });
+          }
         } else {
-          return res.status(403).json({ error: "You don't have permission to rate this claim" });
+          // Determine the recipient of the rating
+          if (fromUserId === post.userId) {
+            // Post owner rating the claimer
+            finalToUserId = claim.claimerId;
+          } else if (fromUserId === claim.claimerId) {
+            // Claimer rating the post owner
+            finalToUserId = post.userId;
+          } else {
+            return res.status(403).json({ error: "You don't have permission to rate this claim" });
+          }
         }
         
         // Check if already rated
         const existingRatings = await storage.getRatingsByClaimId(claimId);
-        const alreadyRated = existingRatings.some(r => r.fromUserId === fromUserId);
+        const alreadyRated = existingRatings.some(r => r.fromUserId === fromUserId && r.toUserId === finalToUserId);
         
         if (alreadyRated) {
-          return res.status(400).json({ error: "You have already rated this claim" });
+          // If already rated, update the existing rating instead of creating a new one
+          const existingRating = existingRatings.find(r => r.fromUserId === fromUserId && r.toUserId === finalToUserId);
+          
+          if (existingRating) {
+            const updatedRating = await storage.updateRating(existingRating.id, {
+              rating: Number(rating),
+              comment: comment || "",
+              categories: categories || []
+            });
+            
+            return res.status(200).json(updatedRating);
+          }
         }
         
-        // Create the rating
-        const rating = await storage.createRating({
-          ...req.body,
+        // Validate the rating value
+        const ratingValue = Number(rating);
+        if (isNaN(ratingValue) || ratingValue < 1 || ratingValue > 5) {
+          return res.status(400).json({ error: "Rating must be a number between 1 and 5" });
+        }
+        
+        // Create the rating with all required fields
+        const ratingData = {
           claimId,
           fromUserId,
-          toUserId
-        });
+          toUserId: finalToUserId,
+          rating: ratingValue,
+          comment: comment || "",
+          categories: categories || []
+        };
         
-        res.status(201).json(rating);
+        console.log('Creating rating with data:', ratingData);
+        
+        const newRating = await storage.createRating(ratingData);
+        
+        res.status(201).json(newRating);
       } catch (error) {
+        console.error('Error creating rating:', error);
         next(error);
       }
     }

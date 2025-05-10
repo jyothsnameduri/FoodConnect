@@ -46,6 +46,11 @@ export interface IStorage {
   createFoodPost(post: InsertFoodPost): Promise<FoodPost>;
   getFoodPost(id: number): Promise<FoodPost | undefined>;
   getFoodPosts(options?: {
+  
+  // Food post image operations
+  addFoodPostImage(image: InsertFoodPostImage): Promise<FoodPostImage>;
+  getFoodPostImages(postId: number): Promise<FoodPostImage[]>;
+  deleteFoodPostImage(id: number): Promise<boolean>;
     type?: "donation" | "request";
     userId?: number;
     status?: string;
@@ -84,6 +89,7 @@ export interface IStorage {
   
   // Rating operations
   createRating(rating: InsertRating): Promise<Rating>;
+  updateRating(id: number, data: Partial<InsertRating>): Promise<Rating>;
   getRating(id: number): Promise<Rating | undefined>;
   getRatingsByClaimId(claimId: number): Promise<Rating[]>;
   getRatingsByUserId(userId: number): Promise<Rating[]>;
@@ -285,12 +291,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async addFoodPostImage(image: InsertFoodPostImage): Promise<FoodPostImage> {
-    const [newImage] = await db
-      .insert(foodPostImages)
-      .values(image)
-      .returning();
-    
-    return newImage;
+    console.log('Adding food post image:', JSON.stringify(image));
+    try {
+      const [newImage] = await db
+        .insert(foodPostImages)
+        .values(image)
+        .returning();
+      return newImage;
+    } catch (error) {
+      console.error('Error adding food post image:', error);
+      throw error;
+    }
   }
 
   async getFoodPostImages(postId: number): Promise<FoodPostImage[]> {
@@ -625,6 +636,43 @@ export class DatabaseStorage implements IStorage {
     });
     
     return newRating;
+  }
+  
+  async updateRating(id: number, data: Partial<InsertRating>): Promise<Rating> {
+    // Get the original rating to calculate reputation adjustment
+    const originalRating = await this.getRating(id);
+    
+    if (!originalRating) {
+      throw new Error(`Rating with ID ${id} not found`);
+    }
+    
+    // Update the rating
+    const [updatedRating] = await db
+      .update(ratings)
+      .set(data)
+      .where(eq(ratings.id, id))
+      .returning();
+    
+    // If the rating value changed, update user reputation
+    if (data.rating && data.rating !== originalRating.rating) {
+      // Remove the effect of the old rating
+      await this.updateUserReputation(originalRating.toUserId, -originalRating.rating);
+      
+      // Add the effect of the new rating
+      await this.updateUserReputation(originalRating.toUserId, data.rating);
+      
+      // Create notification for updated rating
+      await this.createNotification({
+        userId: originalRating.toUserId,
+        type: "rating_update",
+        title: "Rating updated",
+        message: `Your rating was updated to ${data.rating} stars`,
+        relatedId: updatedRating.id,
+        relatedType: "rating"
+      });
+    }
+    
+    return updatedRating;
   }
 
   async getRating(id: number): Promise<Rating | undefined> {

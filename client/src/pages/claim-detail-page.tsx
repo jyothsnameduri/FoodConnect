@@ -251,13 +251,21 @@ export default function ClaimDetailPage() {
   const submitRatingMutation = useMutation({
     mutationFn: async ({ rating, comment, toUserId }: { rating: number; comment: string; toUserId: number }) => {
       if (!user) throw new Error("User not authenticated");
-      const res = await apiRequest("POST", `/api/claims/${claimId}/rate`, {
-        claimId,
-        fromUserId: user.id,
-        toUserId,
-        rating,
-        comment
-      });
+      
+      // Create a payload that matches the expected schema on the server
+      // Include all required fields with correct data types
+      const payload = {
+        claimId: Number(claimId),
+        fromUserId: Number(user.id),
+        toUserId: Number(toUserId),
+        rating: Number(rating),
+        comment: comment || "",
+        categories: [] // Include empty categories array as it's in the schema
+      };
+      
+      console.log('Submitting rating with payload:', payload);
+      
+      const res = await apiRequest("POST", `/api/claims/${claimId}/rate`, payload);
       return await res.json();
     },
     onSuccess: () => {
@@ -614,6 +622,7 @@ export default function ClaimDetailPage() {
                       <RatingForm onSubmit={({ rating, comment }) => {
                         if (!user) return;
                         let toUserId = user.id === post.userId ? claim.claimerId : post.userId;
+                        console.log(`Submitting rating from user ${user.id} to user ${toUserId} for claim ${claimId}`);
                         submitRatingMutation.mutate({ rating, comment, toUserId });
                       }} />
                     </div>

@@ -316,14 +316,50 @@ export default function PostCreationPage() {
         throw error;
       }
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       // Invalidate the posts query to refetch posts
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
 
       // Upload images if any
       if (imageFiles.length > 0) {
-        // In a real implementation, you would upload the images here
-        console.log("Uploading images for post ID", data.id);
+        try {
+          console.log("Uploading images for post ID", data.id);
+          
+          // Upload each image one by one
+          for (const file of imageFiles) {
+            const formData = new FormData();
+            formData.append("image", file);
+            
+            const response = await fetch(`/api/posts/${data.id}/images`, {
+              method: "POST",
+              body: formData,
+              credentials: "include" // Important for sending cookies/session data
+            });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`Failed to upload image: ${errorText}`);
+              throw new Error(`Failed to upload image: ${response.status} ${response.statusText}`);
+            }
+            
+            console.log("Image uploaded successfully");
+          }
+          
+          // Invalidate the post's images query to refetch images
+          queryClient.invalidateQueries({ queryKey: [`/api/posts/${data.id}/images`] });
+          
+          toast({
+            title: "Images uploaded successfully!",
+            description: `${imageFiles.length} image(s) have been uploaded with your post.`,
+          });
+        } catch (error) {
+          console.error("Error uploading images:", error);
+          toast({
+            title: "Image upload issue",
+            description: error instanceof Error ? error.message : "Failed to upload some images, but your post was created.",
+            variant: "destructive",
+          });
+        }
       }
 
       toast({

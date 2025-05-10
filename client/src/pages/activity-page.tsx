@@ -10,8 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 
 export default function ActivityPage() {
   const { user } = useAuth();
-  const [ratingComment, setRatingComment] = useState("");
-  const [ratingValue, setRatingValue] = useState(5);
+  // Use a map to store individual ratings and comments for each claim
+  const [ratingComments, setRatingComments] = useState<Record<number, string>>({});
+  const [ratingValues, setRatingValues] = useState<Record<number, number>>({});
   const [rateClaimId, setRateClaimId] = useState<number | null>(null);
 
   // Fetch user's posts (donations made)
@@ -44,26 +45,73 @@ export default function ActivityPage() {
     enabled: !!user,
   });
 
+  // Track which claims are currently submitting ratings
+  const [submittingClaims, setSubmittingClaims] = useState<Record<number, boolean>>({});
+
   // Submit rating mutation
   const submitRatingMutation = useMutation({
     mutationFn: async ({ claimId, rating, comment, toUserId }: { claimId: number, rating: number, comment: string, toUserId: number }) => {
       if (!user) throw new Error("User not authenticated");
-      const res = await apiRequest("POST", `/api/claims/${claimId}/rate`, {
-        claimId,
-        fromUserId: user.id,
-        toUserId,
-        rating,
-        comment
-      });
-      return await res.json();
+      
+      // Mark this claim as currently submitting
+      setSubmittingClaims(prev => ({
+        ...prev,
+        [claimId]: true
+      }));
+      
+      // Create a payload that matches the expected schema on the server
+      const payload = {
+        claimId: Number(claimId),
+        fromUserId: Number(user.id),
+        toUserId: Number(toUserId),
+        rating: Number(rating),
+        comment: comment || "",
+        categories: [] // Include empty categories array as it's in the schema
+      };
+      
+      console.log(`Submitting rating for claim ${claimId} with rating ${rating}`);
+      
+      try {
+        const res = await apiRequest("POST", `/api/claims/${claimId}/rate`, payload);
+        return {
+          data: await res.json(),
+          claimId
+        };
+      } catch (error) {
+        // Make sure to clear the submitting state on error
+        setSubmittingClaims(prev => ({
+          ...prev,
+          [claimId]: false
+        }));
+        throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      const { claimId } = result;
+      
+      // Update queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/ratings", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/claims", user?.id] });
-      setRateClaimId(null);
-      setRatingComment("");
-      setRatingValue(5);
+      
+      // Clear the submitting state for this claim
+      setSubmittingClaims(prev => ({
+        ...prev,
+        [claimId]: false
+      }));
+      
+      // Show success message
+      alert(`Rating submitted successfully for claim ${claimId}`);
     },
+    onError: (error, variables) => {
+      // Clear the submitting state for this claim
+      setSubmittingClaims(prev => ({
+        ...prev,
+        [variables.claimId]: false
+      }));
+      
+      console.error(`Error submitting rating for claim ${variables.claimId}:`, error);
+      alert(`Error submitting rating: ${error}`);
+    }
   });
 
   // Calculate stats
@@ -72,7 +120,9 @@ export default function ActivityPage() {
   const avgRating = ratings && ratings.length > 0 ? (ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / ratings.length).toFixed(2) : null;
 
   // Find completed, unrated claims for rating
-  const unratedClaims = myClaims?.filter((c: any) => c.status === "completed" && !ratings?.some((r: any) => r.claimId === c.id && r.fromUserId === user?.id));
+  const unratedClaims = user ? myClaims?.filter((c: any) => 
+    c.status === "completed" && !ratings?.some((r: any) => r.claimId === c.id && r.fromUserId === user.id)
+  ) : [];
 
   return (
     <div className="container max-w-4xl mx-auto py-10 px-4">
@@ -181,38 +231,53 @@ export default function ActivityPage() {
                         {Array.from({ length: 5 }).map((_, i) => (
                           <button
                             key={i}
-                            onClick={() => setRatingValue(i + 1)}
-                            className={`focus:outline-none ${ratingValue > i ? 'text-yellow-400' : 'text-gray-300'}`}
+                            onClick={() => {
+                              // Update rating for this specific claim
+                              setRatingValues(prev => ({
+                                ...prev,
+                                [c.id]: i + 1
+                              }));
+                            }}
+                            className={`focus:outline-none ${(ratingValues[c.id] || 5) > i ? 'text-yellow-400' : 'text-gray-300'}`}
                           >
                             <Star className="h-6 w-6" />
                           </button>
                         ))}
-                        <span className="ml-2 text-lg">{ratingValue} Stars</span>
+                        <span className="ml-2 text-lg">{ratingValues[c.id] || 5} Stars</span>
                       </div>
                       <Textarea
                         placeholder="Leave a comment (optional)"
-                        value={ratingComment}
-                        onChange={e => setRatingComment(e.target.value)}
+                        value={ratingComments[c.id] || ""}
+                        onChange={e => {
+                          // Update comment for this specific claim
+                          setRatingComments(prev => ({
+                            ...prev,
+                            [c.id]: e.target.value
+                          }));
+                        }}
                         rows={2}
                         className="bg-white border-gray-200"
                       />
                       <Button
                         onClick={() => {
                           if (!user) return;
-                          // Determine toUserId
-                          let toUserId = user.id === c.claimerId ? c.post.userId : c.claimerId;
+                          // Determine toUserId - safely access properties
+                          let toUserId = user?.id === c.claimerId ? c.post?.userId : c.claimerId;
+                          
+                          console.log(`Submitting rating for claim ${c.id}: ${ratingValues[c.id] || 5} stars`);
+                          
                           submitRatingMutation.mutate({
                             claimId: c.id,
-                            rating: ratingValue,
-                            comment: ratingComment,
+                            rating: ratingValues[c.id] || 5,
+                            comment: ratingComments[c.id] || "",
                             toUserId
                           });
                         }}
-                        disabled={submitRatingMutation.isPending || !user}
-                        className="self-end mt-2"
+                        disabled={submittingClaims[c.id] || !user}
+                        className="self-end mt-2 w-full"
                       >
-                        {submitRatingMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        Submit Rating
+                        {submittingClaims[c.id] ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        {submittingClaims[c.id] ? 'Submitting...' : 'Submit Rating'}
                       </Button>
                     </li>
                   ))}

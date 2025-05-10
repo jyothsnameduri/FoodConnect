@@ -1,8 +1,11 @@
 import { drizzle } from "drizzle-orm/neon-serverless";
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import ws from 'ws';
+import { neonConfig } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import ws from 'ws';
 
 neonConfig.webSocketConstructor = ws;
 
@@ -11,6 +14,10 @@ const DATABASE_URL = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_
 
 const pool = new Pool({ connectionString: DATABASE_URL });
 const db = drizzle(pool);
+
+// Get current file path and directory in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 async function runMigration() {
   try {
