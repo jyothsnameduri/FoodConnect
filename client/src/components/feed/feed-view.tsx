@@ -46,19 +46,19 @@ export function FeedView({ filters }: { filters: any }) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {Array.from({ length: 8 }).map((_, index) => (
-          <div key={index} className="bg-white rounded-soft shadow-soft overflow-hidden">
-            <Skeleton className="h-48 w-full" />
+          <div key={index} className="bg-white dark:bg-gray-800 rounded-soft shadow-soft overflow-hidden transition-colors duration-300">
+            <Skeleton className="h-48 w-full dark:bg-gray-700" />
             <div className="p-4">
-              <Skeleton className="h-6 w-3/4 mb-2" />
-              <Skeleton className="h-4 w-1/4 mb-2" />
-              <Skeleton className="h-4 w-full mb-2" />
-              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-6 w-3/4 mb-2 dark:bg-gray-700" />
+              <Skeleton className="h-4 w-1/4 mb-2 dark:bg-gray-700" />
+              <Skeleton className="h-4 w-full mb-2 dark:bg-gray-700" />
+              <Skeleton className="h-4 w-full mb-2 dark:bg-gray-700" />
               <div className="flex justify-between items-center mt-4">
                 <div className="flex items-center">
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                  <Skeleton className="h-4 w-16 ml-2" />
+                  <Skeleton className="h-8 w-8 rounded-full dark:bg-gray-700" />
+                  <Skeleton className="h-4 w-16 ml-2 dark:bg-gray-700" />
                 </div>
-                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-8 w-16 dark:bg-gray-700" />
               </div>
             </div>
           </div>
@@ -70,15 +70,15 @@ export function FeedView({ filters }: { filters: any }) {
   if (error) {
     return (
       <div className="text-center py-10">
-        <h3 className="text-xl font-montserrat font-semibold text-[#424242] mb-2">
+        <h3 className="text-xl font-montserrat font-semibold text-[#424242] dark:text-white mb-2 transition-colors duration-300">
           Error loading posts
         </h3>
-        <p className="text-[#9E9E9E] mb-4">
+        <p className="text-[#9E9E9E] dark:text-gray-400 mb-4 transition-colors duration-300">
           There was a problem fetching the latest posts. Please try again.
         </p>
         <Button 
           onClick={() => window.location.reload()}
-          className="bg-[#4CAF50] text-white hover:bg-[#388E3C]"
+          className="bg-[#4CAF50] text-white hover:bg-[#388E3C] dark:bg-[#2e7d32] dark:hover:bg-[#1b5e20] transition-colors duration-300"
         >
           Refresh
         </Button>
@@ -88,18 +88,18 @@ export function FeedView({ filters }: { filters: any }) {
 
   if (!filteredPosts || filteredPosts.length === 0) {
     return (
-      <div className="text-center py-10 px-4 bg-[#F5F5F5] rounded-soft">
-        <h3 className="text-xl font-montserrat font-semibold text-[#424242] mb-2">
+      <div className="text-center py-10 px-4 bg-[#F5F5F5] dark:bg-gray-800 rounded-soft transition-colors duration-300">
+        <h3 className="text-xl font-montserrat font-semibold text-[#424242] dark:text-white mb-2 transition-colors duration-300">
           No food posts available
         </h3>
-        <p className="text-[#9E9E9E] mb-6 max-w-lg mx-auto">
+        <p className="text-[#9E9E9E] dark:text-gray-400 mb-6 max-w-lg mx-auto transition-colors duration-300">
           {user 
             ? "Be the first to share food in your community by creating a new post!" 
             : "Sign up to create your own food sharing post or check back later for new items."}
         </p>
         {user && (
           <Button 
-            className="bg-[#4CAF50] text-white hover:bg-[#388E3C]"
+            className="bg-[#4CAF50] text-white hover:bg-[#388E3C] dark:bg-[#2e7d32] dark:hover:bg-[#1b5e20] transition-colors duration-300"
             // onClick will be handled by the floating action button
           >
             Create Post
@@ -121,7 +121,7 @@ export function FeedView({ filters }: { filters: any }) {
         <div className="flex justify-center mt-8">
           <Button
             variant="outline"
-            className="mx-2 border border-[#E0E0E0] text-[#424242]"
+            className="mx-2 border border-[#E0E0E0] dark:border-gray-700 text-[#424242] dark:text-white transition-colors duration-300"
             disabled={page === 1}
             onClick={() => setPage((p) => Math.max(p - 1, 1))}
           >
@@ -129,7 +129,7 @@ export function FeedView({ filters }: { filters: any }) {
           </Button>
           <Button
             variant="outline"
-            className="mx-2 border border-[#E0E0E0] text-[#424242]"
+            className="mx-2 border border-[#E0E0E0] dark:border-gray-700 text-[#424242] dark:text-white transition-colors duration-300"
             onClick={() => setPage((p) => p + 1)}
           >
             Next

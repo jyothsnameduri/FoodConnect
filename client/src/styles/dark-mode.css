@@ -1,0 +1,138 @@
+/* Dark Mode Styles */
+
+.dark body {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+/* Header */
+.dark .header {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+.dark .logo-text {
+  color: #ffffff;
+}
+
+.dark .nav-link {
+  color: #e0e0e0;
+}
+
+.dark .nav-link:hover,
+.dark .nav-link.active {
+  color: #7bed9f;
+}
+
+/* Cards */
+.dark .card {
+  background-color: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.dark .card-header {
+  background-color: #0f172a;
+  border-color: #334155;
+}
+
+/* Buttons */
+.dark .btn-primary {
+  background-color: #4CAF50;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.dark .btn-primary:hover {
+  background-color: #388E3C;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark .btn-outline {
+  border-color: #7bed9f;
+  color: #7bed9f;
+}
+
+.dark .btn-outline:hover {
+  background-color: #7bed9f;
+  color: #ffffff;
+}
+
+/* Text and backgrounds */
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+  color: #f8fafc;
+}
+
+.dark p, .dark span, .dark div {
+  color: #e2e8f0;
+}
+
+.dark .bg-gray-900 {
+  background-color: #0f172a;
+}
+
+.dark .bg-gray-800 {
+  background-color: #1e293b;
+}
+
+.dark .bg-gray-700 {
+  background-color: #334155;
+}
+
+.dark .text-gray-300 {
+  color: #d0d0d0;
+}
+
+.dark .text-gray-400 {
+  color: #c0c0c0;
+}
+
+.dark .border-gray-700 {
+  border-color: #2c3e50;
+}
+
+/* Input fields */
+.dark input, .dark textarea, .dark select {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+.dark input:focus, .dark textarea:focus, .dark select:focus {
+  border-color: #7bed9f;
+  outline-color: #7bed9f;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #888;
+}
+
+/* Text colors */
+.dark .text-primary {
+  color: #6FCF7C;
+}
+
+.dark .text-secondary {
+  color: #FFB74D;
+}
+
+.dark .text-muted {
+  color: #888;
+}
+
+/* Borders */
+.dark .border {
+  border-color: #333;
+}
+
+/* Shadows */
+.dark .shadow-soft {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Dividers */
+.dark hr,
+.dark .divider {
+  border-color: #333;
+}

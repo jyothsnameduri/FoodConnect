@@ -68,9 +68,9 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Use port 5001 to avoid conflicts with existing server
+  // Use PORT from environment variable (provided by Render) or default to 5001
   // this serves both the API and the client.
-  const port = 5001;
+  const port = process.env.PORT ? parseInt(process.env.PORT) : 5001;
   server.listen({
     port,
     host: "0.0.0.0"

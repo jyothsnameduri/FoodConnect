@@ -5,7 +5,8 @@ import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
-const DATABASE_URL = "postgresql://neondb_owner:npg_xiz8aFd7PZYw@ep-orange-fire-a43aed2t-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require";
+// Use environment variable for database connection or fall back to local development URL
+const DATABASE_URL = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_xiz8aFd7PZYw@ep-orange-fire-a43aed2t-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require";
 
 export const pool = new Pool({ connectionString: DATABASE_URL });
 export const db = drizzle(pool, { schema });

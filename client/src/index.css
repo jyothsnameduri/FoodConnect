@@ -1,5 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Open+Sans:wght@300;400;600&family=Lora:ital@1&display=swap');
+@import './styles/dark-mode.css';
 
+/* Tailwind CSS directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -99,6 +101,7 @@
   --ring: 122 39% 49%;
 }
 
+/* Tailwind layer for base styles */
 @layer base {
   * {
     @apply border-border;

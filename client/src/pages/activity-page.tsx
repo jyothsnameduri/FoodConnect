@@ -10,10 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 
 export default function ActivityPage() {
   const { user } = useAuth();
-  // Use a map to store individual ratings and comments for each claim
-  const [ratingComments, setRatingComments] = useState<Record<number, string>>({});
-  const [ratingValues, setRatingValues] = useState<Record<number, number>>({});
-  const [rateClaimId, setRateClaimId] = useState<number | null>(null);
+  // State for managing rating display and filtering
+  const [ratingFilter, setRatingFilter] = useState<number | null>(null);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'highest' | 'lowest'>('newest');
 
   // Fetch user's posts (donations made)
   const { data: myPosts, isLoading: postsLoading } = useQuery({
@@ -45,134 +44,106 @@ export default function ActivityPage() {
     enabled: !!user,
   });
 
-  // Track which claims are currently submitting ratings
-  const [submittingClaims, setSubmittingClaims] = useState<Record<number, boolean>>({});
+  // State for expanded rating details
+  const [expandedRating, setExpandedRating] = useState<number | null>(null);
 
-  // Submit rating mutation
-  const submitRatingMutation = useMutation({
-    mutationFn: async ({ claimId, rating, comment, toUserId }: { claimId: number, rating: number, comment: string, toUserId: number }) => {
-      if (!user) throw new Error("User not authenticated");
-      
-      // Mark this claim as currently submitting
-      setSubmittingClaims(prev => ({
-        ...prev,
-        [claimId]: true
-      }));
-      
-      // Create a payload that matches the expected schema on the server
-      const payload = {
-        claimId: Number(claimId),
-        fromUserId: Number(user.id),
-        toUserId: Number(toUserId),
-        rating: Number(rating),
-        comment: comment || "",
-        categories: [] // Include empty categories array as it's in the schema
-      };
-      
-      console.log(`Submitting rating for claim ${claimId} with rating ${rating}`);
-      
-      try {
-        const res = await apiRequest("POST", `/api/claims/${claimId}/rate`, payload);
-        return {
-          data: await res.json(),
-          claimId
-        };
-      } catch (error) {
-        // Make sure to clear the submitting state on error
-        setSubmittingClaims(prev => ({
-          ...prev,
-          [claimId]: false
-        }));
-        throw error;
+  // Function to sort and filter ratings
+  const getSortedAndFilteredRatings = () => {
+    if (!ratings) return [];
+    
+    // Apply filter if set
+    let filteredRatings = ratingFilter !== null 
+      ? ratings.filter((r: any) => r.rating === ratingFilter)
+      : ratings;
+    
+    // Apply sorting
+    return [...filteredRatings].sort((a: any, b: any) => {
+      if (sortOrder === 'newest') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      } else if (sortOrder === 'highest') {
+        return b.rating - a.rating;
+      } else { // lowest
+        return a.rating - b.rating;
       }
-    },
-    onSuccess: (result) => {
-      const { claimId } = result;
-      
-      // Update queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ["/api/ratings", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/claims", user?.id] });
-      
-      // Clear the submitting state for this claim
-      setSubmittingClaims(prev => ({
-        ...prev,
-        [claimId]: false
-      }));
-      
-      // Show success message
-      alert(`Rating submitted successfully for claim ${claimId}`);
-    },
-    onError: (error, variables) => {
-      // Clear the submitting state for this claim
-      setSubmittingClaims(prev => ({
-        ...prev,
-        [variables.claimId]: false
-      }));
-      
-      console.error(`Error submitting rating for claim ${variables.claimId}:`, error);
-      alert(`Error submitting rating: ${error}`);
-    }
-  });
+    });
+  };
+  
+  // Get rating distribution
+  const getRatingDistribution = () => {
+    if (!ratings || ratings.length === 0) return [];
+    
+    const distribution = [0, 0, 0, 0, 0]; // 5 stars, 4 stars, 3 stars, 2 stars, 1 star
+    
+    ratings.forEach((r: any) => {
+      if (r.rating >= 1 && r.rating <= 5) {
+        distribution[5 - r.rating]++;
+      }
+    });
+    
+    return distribution;
+  };
 
   // Calculate stats
   const totalDonationsMade = myPosts?.filter((p: any) => p.type === "donation" && p.status === "completed").length || 0;
   const totalDonationsReceived = myClaims?.filter((c: any) => c.status === "completed").length || 0;
   const avgRating = ratings && ratings.length > 0 ? (ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / ratings.length).toFixed(2) : null;
 
-  // Find completed, unrated claims for rating
-  const unratedClaims = user ? myClaims?.filter((c: any) => 
-    c.status === "completed" && !ratings?.some((r: any) => r.claimId === c.id && r.fromUserId === user.id)
-  ) : [];
+  // Calculate percentage for each star rating
+  const ratingDistribution = getRatingDistribution();
+  const totalRatingsCount = ratings?.length || 0;
+  const ratingPercentages = ratingDistribution.map(count => 
+    totalRatingsCount > 0 ? Math.round((count / totalRatingsCount) * 100) : 0
+  );
 
   return (
     <div className="container max-w-4xl mx-auto py-10 px-4">
-      <h1 className="text-4xl font-bold mb-10 text-center">My Activity</h1>
+      <h1 className="text-4xl font-bold mb-10 text-center dark:text-white transition-colors duration-300">My Activity</h1>
       <div className="grid md:grid-cols-2 gap-10">
         {/* History Section */}
-        <Card className="border border-gray-200 shadow-md rounded-xl">
-          <CardHeader className="bg-gray-50 rounded-t-xl border-b border-gray-200">
-            <CardTitle className="text-xl">History</CardTitle>
-            <CardDescription className="text-gray-500">Donations and pickups completed</CardDescription>
+        <Card className="border border-gray-200 dark:border-gray-700 shadow-md rounded-xl dark:bg-gray-800 transition-colors duration-300">
+          <CardHeader className="bg-gray-50 dark:bg-gray-900 rounded-t-xl border-b border-gray-200 dark:border-gray-700 transition-colors duration-300">
+            <CardTitle className="text-xl dark:text-white">History</CardTitle>
+            <CardDescription className="text-gray-500 dark:text-gray-400">Donations and pickups completed</CardDescription>
           </CardHeader>
           <CardContent className="py-6">
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="flex flex-col items-center p-4 bg-gray-50 rounded-lg border">
-                <span className="text-xs text-gray-500">Total Donations Made</span>
-                <span className="text-2xl font-bold text-green-600">{totalDonationsMade}</span>
+              <div className="flex flex-col items-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Total Donations Made</span>
+                <span className="text-2xl font-bold text-green-600 dark:text-green-500">{totalDonationsMade}</span>
               </div>
-              <div className="flex flex-col items-center p-4 bg-gray-50 rounded-lg border">
-                <span className="text-xs text-gray-500">Total Donations Received</span>
-                <span className="text-2xl font-bold text-blue-600">{totalDonationsReceived}</span>
+              <div className="flex flex-col items-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Total Donations Received</span>
+                <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalDonationsReceived}</span>
               </div>
             </div>
             <div className="mb-6">
-              <h3 className="font-semibold mb-2 text-gray-700 border-b pb-1">Completed Donations</h3>
+              <h3 className="font-semibold mb-2 text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 pb-1 transition-colors duration-300">Completed Donations</h3>
               {postsLoading ? <Loader2 className="animate-spin mx-auto" /> : (
-                <ul className="divide-y divide-gray-100">
+                <ul className="divide-y divide-gray-100 dark:divide-gray-700">
                   {myPosts?.filter((p: any) => p.status === "completed").map((p: any, idx: number) => (
-                    <li key={p.id} className={`flex flex-col py-3 px-2 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                      <span className="font-medium text-gray-800">{p.title}</span>
-                      <span className="text-xs text-gray-400">Completed on {format(new Date(p.updatedAt), 'PP')}</span>
+                    <li key={p.id} className={`flex flex-col py-3 px-2 ${idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700'} transition-colors duration-300`}>
+                      <span className="font-medium text-gray-800 dark:text-gray-200">{p.title}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">Completed on {format(new Date(p.updatedAt), 'PP')}</span>
                     </li>
                   ))}
                   {(!myPosts || myPosts.filter((p: any) => p.status === "completed").length === 0) && (
-                    <li className="text-center text-gray-400 py-3">No completed donations yet.</li>
+                    <li className="text-center text-gray-400 dark:text-gray-500 py-3">No completed donations yet.</li>
                   )}
                 </ul>
               )}
             </div>
             <div>
-              <h3 className="font-semibold mb-2 text-gray-700 border-b pb-1">Completed Pickups</h3>
+              <h3 className="font-semibold mb-2 text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 pb-1 transition-colors duration-300">Completed Pickups</h3>
               {claimsLoading ? <Loader2 className="animate-spin mx-auto" /> : (
-                <ul className="divide-y divide-gray-100">
+                <ul className="divide-y divide-gray-100 dark:divide-gray-700">
                   {myClaims?.filter((c: any) => c.status === "completed").map((c: any, idx: number) => (
-                    <li key={c.id} className={`flex flex-col py-3 px-2 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                      <span className="font-medium text-gray-800">{c.post?.title || 'Donation'}</span>
-                      <span className="text-xs text-gray-400">Completed on {format(new Date(c.updatedAt), 'PP')}</span>
+                    <li key={c.id} className={`flex flex-col py-3 px-2 ${idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700'} transition-colors duration-300`}>
+                      <span className="font-medium text-gray-800 dark:text-gray-200">{c.post?.title || 'Donation'}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">Completed on {format(new Date(c.updatedAt), 'PP')}</span>
                     </li>
                   ))}
                   {(!myClaims || myClaims.filter((c: any) => c.status === "completed").length === 0) && (
-                    <li className="text-center text-gray-400 py-3">No completed pickups yet.</li>
+                    <li className="text-center text-gray-400 dark:text-gray-500 py-3">No completed pickups yet.</li>
                   )}
                 </ul>
               )}
@@ -181,112 +152,121 @@ export default function ActivityPage() {
         </Card>
 
         {/* Reputation Section */}
-        <Card className="border border-gray-200 shadow-md rounded-xl">
-          <CardHeader className="bg-gray-50 rounded-t-xl border-b border-gray-200">
-            <CardTitle className="text-xl">Reputation</CardTitle>
-            <CardDescription className="text-gray-500">Your ratings and feedback</CardDescription>
+        <Card className="border border-gray-200 dark:border-gray-700 shadow-md rounded-xl dark:bg-gray-800 transition-colors duration-300">
+          <CardHeader className="bg-gray-50 dark:bg-gray-900 rounded-t-xl border-b border-gray-200 dark:border-gray-700 transition-colors duration-300">
+            <CardTitle className="text-xl dark:text-white">Reputation</CardTitle>
+            <CardDescription className="text-gray-500 dark:text-gray-400">Your ratings and feedback</CardDescription>
           </CardHeader>
           <CardContent className="py-6">
-            <div className="flex items-center gap-3 mb-6">
-              <span className="font-semibold text-gray-700">Average Rating:</span>
-              {avgRating ? (
-                <span className="flex items-center">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className={`h-6 w-6 ${i < Math.round(Number(avgRating)) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
-                  ))}
-                  <span className="ml-2 text-2xl font-bold text-yellow-600">{avgRating}</span>
-                </span>
-              ) : (
-                <span className="text-gray-400">No ratings yet</span>
-              )}
-            </div>
-            <div className="mb-6">
-              <h3 className="font-semibold mb-2 text-gray-700 border-b pb-1">Individual Ratings</h3>
-              {ratingsLoading ? <Loader2 className="animate-spin mx-auto" /> : (
-                <ul className="divide-y divide-gray-100">
-                  {ratings?.length > 0 ? ratings.map((r: any, idx: number) => (
-                    <li key={r.id} className={`py-3 px-2 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                      <div className="flex items-center gap-2 mb-1">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star key={i} className={`h-5 w-5 ${i < r.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
-                        ))}
-                        <span className="font-semibold text-gray-700">{r.rating}</span>
-                        <span className="text-xs text-gray-400 ml-2">{r.createdAt ? format(new Date(r.createdAt), 'PP') : ''}</span>
-                      </div>
-                      {r.comment && <div className="mt-1 text-sm text-gray-600 italic">"{r.comment}"</div>}
-                    </li>
-                  )) : <li className="text-center text-gray-400 py-3">No ratings yet.</li>}
-                </ul>
-              )}
-            </div>
-            {/* Rate after pickup */}
-            {unratedClaims && unratedClaims.length > 0 && (
-              <div className="mt-8 border-t pt-6">
-                <h3 className="font-semibold mb-2 text-gray-700">Rate Your Recent Pickups</h3>
-                <ul className="space-y-4">
-                  {unratedClaims.map((c: any) => (
-                    <li key={c.id} className="border rounded-lg p-4 flex flex-col gap-2 bg-gray-50">
-                      <span className="font-medium text-gray-800">{c.post?.title || 'Donation'}</span>
-                      <div className="flex items-center gap-2">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <button
-                            key={i}
-                            onClick={() => {
-                              // Update rating for this specific claim
-                              setRatingValues(prev => ({
-                                ...prev,
-                                [c.id]: i + 1
-                              }));
-                            }}
-                            className={`focus:outline-none ${(ratingValues[c.id] || 5) > i ? 'text-yellow-400' : 'text-gray-300'}`}
-                          >
-                            <Star className="h-6 w-6" />
-                          </button>
-                        ))}
-                        <span className="ml-2 text-lg">{ratingValues[c.id] || 5} Stars</span>
-                      </div>
-                      <Textarea
-                        placeholder="Leave a comment (optional)"
-                        value={ratingComments[c.id] || ""}
-                        onChange={e => {
-                          // Update comment for this specific claim
-                          setRatingComments(prev => ({
-                            ...prev,
-                            [c.id]: e.target.value
-                          }));
-                        }}
-                        rows={2}
-                        className="bg-white border-gray-200"
-                      />
-                      <Button
-                        onClick={() => {
-                          if (!user) return;
-                          // Determine toUserId - safely access properties
-                          let toUserId = user?.id === c.claimerId ? c.post?.userId : c.claimerId;
-                          
-                          console.log(`Submitting rating for claim ${c.id}: ${ratingValues[c.id] || 5} stars`);
-                          
-                          submitRatingMutation.mutate({
-                            claimId: c.id,
-                            rating: ratingValues[c.id] || 5,
-                            comment: ratingComments[c.id] || "",
-                            toUserId
-                          });
-                        }}
-                        disabled={submittingClaims[c.id] || !user}
-                        className="self-end mt-2 w-full"
-                      >
-                        {submittingClaims[c.id] ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        {submittingClaims[c.id] ? 'Submitting...' : 'Submit Rating'}
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
+            {/* Enhanced Average Rating Section */}
+            <div className="flex flex-col gap-3 mb-6">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Average Rating:</span>
+                {avgRating ? (
+                  <span className="flex items-center">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} className={`h-6 w-6 ${i < Math.round(Number(avgRating)) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 dark:text-gray-600'}`} />
+                    ))}
+                    <span className="ml-2 text-2xl font-bold text-yellow-600 dark:text-yellow-500">{avgRating}</span>
+                    <span className="ml-1 text-sm text-gray-500 dark:text-gray-400">({totalRatingsCount} {totalRatingsCount === 1 ? 'review' : 'reviews'})</span>
+                  </span>
+                ) : (
+                  <span className="text-gray-400 dark:text-gray-500">No ratings yet</span>
+                )}
               </div>
-            )}
+              
+              {/* Rating Distribution */}
+              {ratings && ratings.length > 0 && (
+                <div className="mt-2 space-y-2">
+                  {[5, 4, 3, 2, 1].map((star, idx) => (
+                    <div key={star} className="flex items-center gap-2">
+                      <span className="text-sm w-8 dark:text-gray-300">{star} star</span>
+                      <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 transition-colors duration-300">
+                        <div 
+                          className="bg-yellow-400 dark:bg-yellow-500 h-2.5 rounded-full transition-colors duration-300" 
+                          style={{ width: `${ratingPercentages[idx]}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 w-8">{ratingPercentages[idx]}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Enhanced Individual Ratings Section */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-gray-700 dark:text-gray-300">Individual Ratings</h3>
+                {ratings && ratings.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <select 
+                      className="text-xs border border-gray-200 dark:border-gray-700 rounded p-1 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 transition-colors duration-300"
+                      value={ratingFilter === null ? 'all' : ratingFilter}
+                      onChange={(e) => setRatingFilter(e.target.value === 'all' ? null : Number(e.target.value))}
+                    >
+                      <option value="all">All Ratings</option>
+                      {[5, 4, 3, 2, 1].map(star => (
+                        <option key={star} value={star}>{star} Stars</option>
+                      ))}
+                    </select>
+                    <select
+                      className="text-xs border border-gray-200 dark:border-gray-700 rounded p-1 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 transition-colors duration-300"
+                      value={sortOrder}
+                      onChange={(e) => setSortOrder(e.target.value as 'newest' | 'highest' | 'lowest')}
+                    >
+                      <option value="newest">Newest</option>
+                      <option value="highest">Highest First</option>
+                      <option value="lowest">Lowest First</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+              
+              {ratingsLoading ? <Loader2 className="animate-spin mx-auto" /> : (
+                <ul className="space-y-4 mt-4">
+                  {getSortedAndFilteredRatings().map((rating: any) => (
+                    <li 
+                      key={rating.id} 
+                      className="p-3 border border-gray-100 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center mb-1">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star key={i} className={`h-4 w-4 ${i < rating.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 dark:text-gray-600'}`} />
+                            ))}
+                            <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">{format(new Date(rating.createdAt), 'PP')}</span>
+                          </div>
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{rating.fromUser?.name || 'Anonymous'}</p>
+                        </div>
+                        <button 
+                          onClick={() => setExpandedRating(expandedRating === rating.id ? null : rating.id)}
+                          className="text-xs text-blue-500 dark:text-blue-400 hover:underline"
+                        >
+                          {expandedRating === rating.id ? 'Show Less' : 'Show More'}
+                        </button>
+                      </div>
+                      
+                      {expandedRating === rating.id && (
+                        <div className="mt-2">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 italic">"{rating.comment || 'No comment provided.'}"</p>
+                          <div className="mt-2 text-xs text-gray-500 dark:text-gray-500">
+                            <p>For donation: {rating.post?.title || 'Unknown'}</p>
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                  {getSortedAndFilteredRatings().length === 0 && (
+                    <li className="text-center text-gray-400 dark:text-gray-500 py-6">No ratings found with the selected filter.</li>
+                  )}
+                </ul>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
     </div>
   );
-} 
+}

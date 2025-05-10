@@ -100,11 +100,11 @@ export function ClaimButton({ post }: ClaimButtonProps) {
   // Donation vs Request styling
   const buttonClassName = post.type === "donation"
     ? isUsersPost 
-      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-      : "bg-[#4CAF50] text-white hover:bg-[#388E3C]"
+      ? "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed transition-colors duration-300"
+      : "bg-[#4CAF50] dark:bg-[#2e7d32] text-white hover:bg-[#388E3C] dark:hover:bg-[#1b5e20] transition-colors duration-300"
     : isUsersPost
-      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-      : "bg-[#42A5F5] text-white hover:bg-[#1976D2]";
+      ? "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed transition-colors duration-300"
+      : "bg-[#42A5F5] dark:bg-[#1565c0] text-white hover:bg-[#1976D2] dark:hover:bg-[#0d47a1] transition-colors duration-300";
   
   const buttonIcon = post.type === "donation"
     ? <Gift className="h-4 w-4 mr-2" />
@@ -119,6 +119,7 @@ export function ClaimButton({ post }: ClaimButtonProps) {
       className={buttonClassName}
       onClick={handleClaim}
       disabled={createClaimMutation.isPending || isUsersPost || !isClaimable}
+      style={{ cursor: 'pointer', pointerEvents: 'auto' }}
     >
       {createClaimMutation.isPending ? (
         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -134,10 +135,10 @@ export function ClaimButton({ post }: ClaimButtonProps) {
     <>
       {!isClaimable && (
         <div className="mb-2">
-          <span className={`inline-block px-2 py-1 text-xs rounded-full font-semibold ${
-            post.status === 'claimed' ? 'bg-blue-100 text-blue-800' :
-            post.status === 'completed' ? 'bg-green-100 text-green-800' :
-            'bg-gray-100 text-gray-800'
+          <span className={`inline-block px-2 py-1 text-xs rounded-full font-semibold transition-colors duration-300 ${
+            post.status === 'claimed' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' :
+            post.status === 'completed' ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300' :
+            'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300'
           }`}>
             {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
           </span>

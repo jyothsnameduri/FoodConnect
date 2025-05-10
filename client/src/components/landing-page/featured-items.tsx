@@ -68,63 +68,65 @@ const featuredItems: FoodItem[] = [
 
 export function FeaturedItems() {
   return (
-    <section className="py-16 bg-[#F5F5F5]">
+    <section className="py-16 bg-[#F5F5F5] dark:bg-gray-900 transition-colors duration-300">
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8">
-          <h2 className="font-montserrat font-bold text-2xl md:text-3xl text-[#424242]">
+          <h2 className="font-montserrat font-bold text-2xl md:text-3xl text-[#424242] dark:text-white transition-colors duration-300">
             Recently Shared Near You
           </h2>
-          <Link href="/items" className="text-[#4CAF50] font-montserrat font-semibold hover:underline mt-2 md:mt-0">
+          <Link href="/items" className="text-[#4CAF50] dark:text-[#7bed9f] font-montserrat font-semibold hover:underline mt-2 md:mt-0 transition-colors duration-300">
             View All <span aria-hidden="true">→</span>
           </Link>
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {featuredItems.map((item) => (
-            <div key={item.id} className="bg-white rounded-soft shadow-soft overflow-hidden">
+            <div key={item.id} className="bg-white dark:bg-gray-800 rounded-soft shadow-soft dark:shadow-md overflow-hidden transition-all duration-300 hover:shadow-2xl hover:translate-y-[-5px] group" style={{ pointerEvents: 'none' }}>
               <img 
                 src={item.image} 
                 alt={item.title} 
-                className="w-full h-48 object-cover" 
+                className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" 
               />
               <div className="p-4">
                 <div className="flex justify-between items-start">
-                  <h3 className="font-montserrat font-semibold text-lg">{item.title}</h3>
+                  <h3 className="font-montserrat font-semibold text-lg dark:text-white transition-colors duration-300">{item.title}</h3>
                   <span 
                     className={`
                       text-xs font-montserrat font-semibold px-2 py-1 rounded-full
                       ${item.type === 'donation' 
-                        ? 'bg-[#4CAF50]/10 text-[#4CAF50]' 
-                        : 'bg-[#42A5F5]/10 text-[#42A5F5]'}
+                        ? 'bg-[#4CAF50]/10 dark:bg-[#4CAF50]/20 text-[#4CAF50] dark:text-[#7bed9f]' 
+                        : 'bg-[#42A5F5]/10 dark:bg-[#42A5F5]/20 text-[#42A5F5] dark:text-[#60a5fa]'}
+                      transition-colors duration-300
                     `}
                   >
                     {item.type === 'donation' ? 'Donation' : 'Request'}
                   </span>
                 </div>
-                <p className="text-[#9E9E9E] text-sm mt-1">
+                <p className="text-[#9E9E9E] dark:text-gray-400 text-sm mt-1 transition-colors duration-300">
                   <MapPin className="inline-block w-3 h-3 mr-1" /> {item.distance}
                 </p>
-                <p className="font-opensans text-sm mt-2 text-[#424242]">
+                <p className="font-opensans text-sm mt-2 text-[#424242] dark:text-gray-300 transition-colors duration-300">
                   {item.description}
                 </p>
                 <div className="mt-4 flex justify-between items-center">
                   <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-full bg-[#E0E0E0] overflow-hidden">
+                    <div className="w-8 h-8 rounded-full bg-[#E0E0E0] dark:bg-gray-700 overflow-hidden transition-colors duration-300">
                       <img 
                         src={item.user.avatar}
                         alt={item.user.name} 
                         className="w-full h-full object-cover" 
                       />
                     </div>
-                    <span className="ml-2 text-sm font-opensans">{item.user.name}</span>
+                    <span className="ml-2 text-sm font-opensans dark:text-gray-300 transition-colors duration-300">{item.user.name}</span>
                   </div>
                   <Button 
                     className={`
-                      px-3 py-1 text-sm rounded-soft text-white
+                      px-3 py-1 text-sm rounded-soft text-white transition-colors duration-300
                       ${item.type === 'donation' 
-                        ? 'bg-[#4CAF50] hover:bg-[#388E3C]' 
-                        : 'bg-[#42A5F5] hover:bg-[#1976D2]'}
+                        ? 'bg-[#4CAF50] hover:bg-[#388E3C] dark:bg-[#388E3C] dark:hover:bg-[#4CAF50]' 
+                        : 'bg-[#42A5F5] hover:bg-[#1976D2] dark:bg-[#1976D2] dark:hover:bg-[#42A5F5]'}
                     `}
+                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
                   >
                     {item.type === 'donation' ? 'Claim' : 'Respond'}
                   </Button>

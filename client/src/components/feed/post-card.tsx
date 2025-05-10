@@ -93,12 +93,12 @@ export function PostCard({ post }: PostCardProps) {
   }, [post.latitude, post.longitude]);
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl border border-[#F0F0F0] group flex flex-col justify-between">
-      <div>
+    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:translate-y-[-5px] border border-[#F0F0F0] dark:border-gray-700 group flex flex-col justify-between" style={{ pointerEvents: 'none' }}>
+      <div className="flex flex-col h-full">
       <div className="relative">
         {imagesLoading ? (
-          <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
-            <ImageIcon className="w-8 h-8 text-gray-400 animate-pulse" />
+          <div className="w-full h-48 bg-gray-200 dark:bg-gray-800 flex items-center justify-center transition-colors duration-300">
+            <ImageIcon className="w-8 h-8 text-gray-400 dark:text-gray-500 animate-pulse transition-colors duration-300" />
           </div>
         ) : (
           <img 
@@ -110,10 +110,10 @@ export function PostCard({ post }: PostCardProps) {
           <div className="absolute top-2 right-2 z-10">
           <span 
             className={`
-                text-xs font-montserrat font-semibold px-3 py-1 rounded-full shadow-md
+                text-xs font-montserrat font-semibold px-3 py-1 rounded-full shadow-md transition-colors duration-300
               ${post.type === 'donation' 
-                  ? 'bg-[#4CAF50] text-white' 
-                  : 'bg-[#42A5F5] text-white'}
+                  ? 'bg-[#4CAF50] dark:bg-[#2e7d32] text-white' 
+                  : 'bg-[#42A5F5] dark:bg-[#1565c0] text-white'}
             `}
               style={{ textShadow: '0 1px 4px rgba(0,0,0,0.15)' }}
           >
@@ -124,53 +124,53 @@ export function PostCard({ post }: PostCardProps) {
 
         <div className="p-5 flex flex-col gap-2">
           <div className="flex justify-between items-center mb-1">
-            <h3 className="font-montserrat font-bold text-lg text-[#222] leading-tight truncate">
-            <Link href={`/posts/${post.id}`} className="hover:text-[#4CAF50] transition-colors">
+            <h3 className="font-montserrat font-bold text-lg text-[#222] dark:text-white leading-tight truncate transition-colors duration-300">
+            <Link href={`/posts/${post.id}`} className="hover:text-[#4CAF50] dark:hover:text-[#7bed9f] transition-colors">
               {post.title}
             </Link>
           </h3>
         </div>
-          <div className="flex items-center gap-2 text-[#4CAF50] text-sm font-semibold mt-1">
-            <MapPin className="inline-block w-4 h-4 text-[#4CAF50]" />
+          <div className="flex items-center gap-2 text-[#4CAF50] dark:text-[#7bed9f] text-sm font-semibold mt-1 transition-colors duration-300">
+            <MapPin className="inline-block w-4 h-4 text-[#4CAF50] dark:text-[#7bed9f] transition-colors duration-300" />
             <span>Location</span>
           </div>
           {post.latitude && post.longitude && (
-            <div className="bg-[#F5F5F5] rounded-md px-3 py-2 text-xs text-[#424242] font-opensans mb-1 flex items-center gap-2">
+            <div className="bg-[#F5F5F5] dark:bg-gray-700 rounded-md px-3 py-2 text-xs text-[#424242] dark:text-gray-300 font-opensans mb-1 flex items-center gap-2 transition-colors duration-300">
               <span className="truncate w-full" title={locationName || undefined}>
                 {locationLoading ? 'Loading location...' : (locationName || `Lat: ${post.latitude}, Lng: ${post.longitude}`)}
               </span>
         </div>
           )}
-          <div className="border-t border-[#E0E0E0] my-2" />
-          <p className="font-opensans text-sm text-[#424242] line-clamp-2 mb-1">
+          <div className="border-t border-[#E0E0E0] dark:border-gray-700 my-2 transition-colors duration-300" />
+          <p className="font-opensans text-sm text-[#424242] dark:text-gray-300 line-clamp-2 mb-1 transition-colors duration-300">
           {post.description}
         </p>
           <div className="flex flex-row items-center gap-3 mt-2">
-            <span className="inline-flex items-center bg-[#FFF3E0] text-[#FF9800] text-xs px-3 py-1 rounded-full font-semibold">
+            <span className="inline-flex items-center bg-[#FFF3E0] dark:bg-amber-900/30 text-[#FF9800] dark:text-amber-400 text-xs px-3 py-1 rounded-full font-semibold transition-colors duration-300">
               <CalendarDays className="w-3 h-3 mr-1" />
               {calculateExpiryTime()}
             </span>
-            <span className="flex items-center text-xs text-[#9E9E9E]">
+            <span className="flex items-center text-xs text-[#9E9E9E] dark:text-gray-400 transition-colors duration-300">
           <Clock className="w-3 h-3 mr-1" />
               Posted {formattedDate}
             </span>
           </div>
         </div>
       </div>
-      <div className="bg-[#FAFAFA] px-5 py-3 flex flex-col gap-2 border-t border-[#F0F0F0]">
+      <div className="bg-[#FAFAFA] dark:bg-gray-800 px-5 py-3 flex flex-col gap-2 border-t border-[#F0F0F0] dark:border-gray-700 transition-colors duration-300">
         {/* Rich claimed/completed message */}
         {post.status === 'claimed' && post.updatedAt && (
           <div className="flex items-center gap-2 mb-1">
-            <span className="inline-flex items-center text-base font-semibold text-blue-800 bg-blue-100 rounded-lg px-4 py-2 shadow-sm">
-              <Clock className="w-4 h-4 mr-2 text-blue-500" />
+            <span className="inline-flex items-center text-sm font-semibold text-blue-800 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40 rounded-lg px-3 py-1.5 shadow-sm transition-colors duration-300">
+              <Clock className="w-4 h-4 mr-2 text-blue-500 dark:text-blue-400 transition-colors duration-300" />
               Claimed @ {format(new Date(post.updatedAt), 'MMM d, yyyy h:mm a')}
             </span>
           </div>
         )}
         {post.status === 'completed' && post.updatedAt && (
           <div className="flex items-center gap-2 mb-1">
-            <span className="inline-flex items-center text-base font-semibold text-purple-800 bg-purple-100 rounded-lg px-4 py-2 shadow-sm">
-              <Clock className="w-4 h-4 mr-2 text-purple-500" />
+            <span className="inline-flex items-center text-sm font-semibold text-purple-800 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 rounded-lg px-3 py-1.5 shadow-sm transition-colors duration-300">
+              <Clock className="w-4 h-4 mr-2 text-purple-500 dark:text-purple-400 transition-colors duration-300" />
               Completed @ {format(new Date(post.updatedAt), 'MMM d, yyyy h:mm a')}
             </span>
           </div>

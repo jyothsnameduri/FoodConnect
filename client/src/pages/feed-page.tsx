@@ -66,7 +66,7 @@ export default function FeedPage() {
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-row items-center justify-between mb-4 w-full gap-4">
           <div className="flex-1" />
-          <h1 className="font-montserrat font-extrabold text-3xl md:text-5xl text-[#424242] text-center flex-1">
+          <h1 className="font-montserrat font-extrabold text-3xl md:text-5xl text-[#424242] dark:text-white text-center flex-1 transition-colors duration-300">
             Find Food
           </h1>
           <div className="flex flex-row items-center gap-4 flex-1 justify-end">
@@ -76,20 +76,20 @@ export default function FeedPage() {
                 placeholder="Search for food items..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-10 w-full md:w-64 lg:w-80 border border-[#E0E0E0] rounded-soft focus:outline-none focus:border-[#4CAF50]"
+                className="pr-10 w-full md:w-64 lg:w-80 border border-[#E0E0E0] dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-soft focus:outline-none focus:border-[#4CAF50] dark:focus:border-[#7bed9f] transition-colors duration-300"
               />
               <Button 
                 type="submit" 
                 variant="ghost" 
                 size="icon" 
-                className="absolute right-1 top-1/2 transform -translate-y-1/2 text-[#9E9E9E] hover:text-[#4CAF50]"
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 text-[#9E9E9E] dark:text-gray-400 hover:text-[#4CAF50] dark:hover:text-[#7bed9f] transition-colors duration-300"
               >
                 <Search className="h-5 w-5" />
               </Button>
             </form>
             <Button
               variant="default"
-              className="bg-[#4CAF50] text-white font-bold px-6 py-2 rounded-lg shadow-lg text-base hover:bg-[#388E3C] focus:ring-2 focus:ring-[#4CAF50] focus:outline-none transition-all duration-200"
+              className="bg-[#4CAF50] dark:bg-[#2e7d32] text-white font-bold px-6 py-2 rounded-lg shadow-lg text-base hover:bg-[#388E3C] dark:hover:bg-[#1b5e20] focus:ring-2 focus:ring-[#4CAF50] dark:focus:ring-[#7bed9f] focus:outline-none transition-all duration-200"
               onClick={() => setShowFilters(!showFilters)}
             >
               Filters
@@ -112,16 +112,16 @@ export default function FeedPage() {
           className="w-full mb-6"
         >
           <div className="flex justify-between items-center mb-4">
-            <TabsList className="grid w-[200px] grid-cols-2">
+            <TabsList className="grid w-[200px] grid-cols-2 dark:bg-gray-800 transition-colors duration-300">
               <TabsTrigger 
                 value="feed"
-                className="font-montserrat font-semibold"
+                className="font-montserrat font-semibold dark:data-[state=active]:bg-gray-950 dark:data-[state=active]:text-white dark:text-gray-300 transition-colors duration-300"
               >
                 List View
               </TabsTrigger>
               <TabsTrigger 
                 value="map"
-                className="font-montserrat font-semibold"
+                className="font-montserrat font-semibold dark:data-[state=active]:bg-gray-950 dark:data-[state=active]:text-white dark:text-gray-300 transition-colors duration-300"
               >
                 Map View
               </TabsTrigger>

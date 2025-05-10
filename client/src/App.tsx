@@ -19,6 +19,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import ActivityPage from "@/pages/activity-page";
+import { ThemeProvider } from "@/contexts/theme-context";
 
 function Router() {
   return (
@@ -75,12 +76,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </HelmetProvider>
     </QueryClientProvider>
   );

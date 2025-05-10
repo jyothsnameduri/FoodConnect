@@ -84,7 +84,7 @@ export function NotificationsDropdown() {
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5 text-[#424242]" />
+          <Bell className="h-5 w-5 text-[#424242] dark:text-white transition-colors duration-300" />
           {unreadCount > 0 && (
             <Badge 
               className="absolute -top-1 -right-1 px-[0.35rem] py-[0.15rem] min-w-[1.2rem] min-h-[1.2rem] flex items-center justify-center bg-[#F44336] text-white border-0 text-[0.7rem]"
@@ -94,12 +94,12 @@ export function NotificationsDropdown() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[320px] p-0">
-        <div className="flex justify-between items-center p-3 bg-[#FAFAFA]">
+      <DropdownMenuContent align="end" className="w-[320px] p-0 dark:bg-gray-900 border dark:border-gray-700 transition-colors duration-300">
+        <div className="flex justify-between items-center p-3 bg-[#FAFAFA] dark:bg-gray-800 transition-colors duration-300">
           <div className="flex items-center gap-2">
             {/* Gold bell icon */}
-            <Bell className="h-5 w-5 text-[#FFC107]" />
-            <h3 className="font-opensans font-semibold text-[#424242]">Notifications</h3>
+            <Bell className="h-5 w-5 text-[#FFC107] dark:text-[#FFC107] transition-colors duration-300" />
+            <h3 className="font-opensans font-semibold text-[#424242] dark:text-white transition-colors duration-300">Notifications</h3>
           </div>
           {notifications && notifications.length > 0 && (
             <Button 
@@ -110,7 +110,7 @@ export function NotificationsDropdown() {
                 markAllAsReadMutation.mutate();
               }}
               disabled={markAllAsReadMutation.isPending}
-              className="h-8 text-xs"
+              className="h-8 text-xs dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 transition-colors duration-300"
             >
               {markAllAsReadMutation.isPending ? (
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
@@ -123,11 +123,11 @@ export function NotificationsDropdown() {
         <div className="max-h-[350px] overflow-y-auto">
           {isLoading ? (
             <div className="flex justify-center items-center p-6">
-              <Loader2 className="h-6 w-6 animate-spin text-[#9E9E9E]" />
+              <Loader2 className="h-6 w-6 animate-spin text-[#9E9E9E] dark:text-gray-400 transition-colors duration-300" />
             </div>
           ) : unreadNotifications.length === 0 ? (
-            <div className="text-center py-8 px-4 text-[#9E9E9E]">
-              <Bell className="h-10 w-10 mx-auto mb-2 text-[#E0E0E0]" />
+            <div className="text-center py-8 px-4 text-[#9E9E9E] dark:text-gray-400 transition-colors duration-300">
+              <Bell className="h-10 w-10 mx-auto mb-2 text-[#E0E0E0] dark:text-gray-700 transition-colors duration-300" />
               <p>No new notifications</p>
               <p className="text-sm mt-1">Check back later for updates</p>
             </div>
@@ -145,21 +145,21 @@ export function NotificationsDropdown() {
                   <Link 
                     href={link}
                     className={cn(
-                      "flex items-start gap-3 p-3 cursor-pointer hover:bg-[#F5F5F5]",
-                      !notification.isRead && "bg-[#E8F5E9]"
+                      "flex items-start gap-3 p-3 cursor-pointer hover:bg-[#F5F5F5] dark:hover:bg-gray-800 transition-colors duration-300",
+                      !notification.isRead && "bg-[#E8F5E9] dark:bg-[#1b5e20]/20"
                     )}
                   >
-                    <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-[#F5F5F5] rounded-full">
+                    <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-[#F5F5F5] dark:bg-gray-700 rounded-full transition-colors duration-300">
                       {getNotificationIcon(notification.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#424242] whitespace-normal break-words font-semibold">
+                      <p className="text-sm text-[#424242] dark:text-white whitespace-normal break-words font-semibold transition-colors duration-300">
                         {notification.title}
                       </p>
-                      <p className="text-xs text-[#757575] whitespace-normal break-words">
+                      <p className="text-xs text-[#757575] dark:text-gray-400 whitespace-normal break-words transition-colors duration-300">
                         {notification.message}
                       </p>
-                      <div className="flex items-center mt-1 text-xs text-[#9E9E9E]">
+                      <div className="flex items-center mt-1 text-xs text-[#9E9E9E] dark:text-gray-500 transition-colors duration-300">
                         <Clock className="h-3 w-3 mr-1" />
                         {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
                       </div>
@@ -173,9 +173,9 @@ export function NotificationsDropdown() {
         
         {notifications && notifications.length > 0 && (
           <>
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="dark:border-gray-700 transition-colors duration-300" />
             <DropdownMenuItem asChild>
-              <Link href="/notifications" className="flex justify-center p-2 text-sm text-[#4CAF50]">
+              <Link href="/notifications" className="flex justify-center p-2 text-sm text-[#4CAF50] dark:text-[#6FCF7C] hover:bg-[#F5F5F5] dark:hover:bg-gray-800 transition-colors duration-300">
                 View all notifications
               </Link>
             </DropdownMenuItem>

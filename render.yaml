@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: foodconnect
+    env: node
+    buildCommand: npm install && npm run build && npm run migrations:push
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: foodconnect-db
+          property: connectionString
+    plan: free
+
+databases:
+  - name: foodconnect-db
+    plan: free

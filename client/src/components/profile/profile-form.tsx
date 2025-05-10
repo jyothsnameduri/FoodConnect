@@ -65,11 +65,11 @@ export function ProfileForm() {
             name="firstName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="font-opensans font-semibold text-[#424242] mb-1">First Name</FormLabel>
+                <FormLabel className="font-opensans font-semibold text-[#424242] dark:text-gray-200 mb-1 transition-colors duration-300">First Name</FormLabel>
                 <FormControl>
                   <Input 
                     {...field} 
-                    className="w-full px-4 py-2 border border-[#E0E0E0] rounded-soft focus:outline-none focus:border-[#4CAF50]"
+                    className="w-full px-4 py-2 border border-[#E0E0E0] dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-soft focus:outline-none focus:border-[#4CAF50] transition-colors duration-300"
                     disabled={isSubmitting}
                   />
                 </FormControl>
@@ -83,11 +83,11 @@ export function ProfileForm() {
             name="lastName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="font-opensans font-semibold text-[#424242] mb-1">Last Name</FormLabel>
+                <FormLabel className="font-opensans font-semibold text-[#424242] dark:text-gray-200 mb-1 transition-colors duration-300">Last Name</FormLabel>
                 <FormControl>
                   <Input 
                     {...field} 
-                    className="w-full px-4 py-2 border border-[#E0E0E0] rounded-soft focus:outline-none focus:border-[#4CAF50]"
+                    className="w-full px-4 py-2 border border-[#E0E0E0] dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-soft focus:outline-none focus:border-[#4CAF50] transition-colors duration-300"
                     disabled={isSubmitting}
                   />
                 </FormControl>
@@ -102,11 +102,11 @@ export function ProfileForm() {
           name="email"
           render={({ field }) => (
             <FormItem className="mb-4">
-              <FormLabel className="font-opensans font-semibold text-[#424242] mb-1">Email</FormLabel>
+              <FormLabel className="font-opensans font-semibold text-[#424242] dark:text-gray-200 mb-1 transition-colors duration-300">Email</FormLabel>
               <FormControl>
                 <Input 
                   {...field} 
-                  className="w-full px-4 py-2 border border-[#E0E0E0] rounded-soft focus:outline-none focus:border-[#4CAF50]"
+                  className="w-full px-4 py-2 border border-[#E0E0E0] dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-soft focus:outline-none focus:border-[#4CAF50] transition-colors duration-300"
                   disabled={isSubmitting}
                 />
               </FormControl>
@@ -120,12 +120,12 @@ export function ProfileForm() {
           name="phone"
           render={({ field }) => (
             <FormItem className="mb-4">
-              <FormLabel className="font-opensans font-semibold text-[#424242] mb-1">Phone (optional)</FormLabel>
+              <FormLabel className="font-opensans font-semibold text-[#424242] dark:text-gray-200 mb-1 transition-colors duration-300">Phone (optional)</FormLabel>
               <FormControl>
                 <Input 
                   {...field} 
                   placeholder="(555) 123-4567"
-                  className="w-full px-4 py-2 border border-[#E0E0E0] rounded-soft focus:outline-none focus:border-[#4CAF50]"
+                  className="w-full px-4 py-2 border border-[#E0E0E0] dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-soft focus:outline-none focus:border-[#4CAF50] transition-colors duration-300"
                   disabled={isSubmitting}
                 />
               </FormControl>
@@ -139,11 +139,11 @@ export function ProfileForm() {
           name="zipCode"
           render={({ field }) => (
             <FormItem className="mb-4">
-              <FormLabel className="font-opensans font-semibold text-[#424242] mb-1">ZIP/Postal Code</FormLabel>
+              <FormLabel className="font-opensans font-semibold text-[#424242] dark:text-gray-200 mb-1 transition-colors duration-300">ZIP/Postal Code</FormLabel>
               <FormControl>
                 <Input 
                   {...field} 
-                  className="w-full px-4 py-2 border border-[#E0E0E0] rounded-soft focus:outline-none focus:border-[#4CAF50]"
+                  className="w-full px-4 py-2 border border-[#E0E0E0] dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-soft focus:outline-none focus:border-[#4CAF50] transition-colors duration-300"
                   disabled={isSubmitting}
                 />
               </FormControl>
@@ -157,12 +157,12 @@ export function ProfileForm() {
           name="bio"
           render={({ field }) => (
             <FormItem className="mb-6">
-              <FormLabel className="font-opensans font-semibold text-[#424242] mb-1">Bio (optional)</FormLabel>
+              <FormLabel className="font-opensans font-semibold text-[#424242] dark:text-gray-200 mb-1 transition-colors duration-300">Bio (optional)</FormLabel>
               <FormControl>
                 <Textarea 
                   {...field} 
                   placeholder="Tell the community a bit about yourself..."
-                  className="w-full px-4 py-2 border border-[#E0E0E0] rounded-soft focus:outline-none focus:border-[#4CAF50]"
+                  className="w-full px-4 py-2 border border-[#E0E0E0] dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-soft focus:outline-none focus:border-[#4CAF50] transition-colors duration-300"
                   rows={3}
                   disabled={isSubmitting}
                 />
@@ -176,14 +176,14 @@ export function ProfileForm() {
           <Button 
             type="button" 
             variant="outline" 
-            className="mr-3 px-4 py-2 border border-[#E0E0E0] text-[#424242] rounded-soft font-montserrat hover:bg-[#F5F5F5] transition-colors"
+            className="mr-3 px-4 py-2 border border-[#E0E0E0] dark:border-gray-700 text-[#424242] dark:text-gray-200 rounded-soft font-montserrat hover:bg-[#F5F5F5] dark:hover:bg-gray-700 transition-colors duration-300"
             disabled={isSubmitting}
           >
             Cancel
           </Button>
           <Button 
             type="submit" 
-            className="px-4 py-2 bg-[#4CAF50] text-white rounded-soft font-montserrat font-semibold hover:bg-[#388E3C] transition-colors"
+            className="px-4 py-2 bg-[#4CAF50] dark:bg-[#388E3C] text-white rounded-soft font-montserrat font-semibold hover:bg-[#388E3C] dark:hover:bg-[#2E7D32] transition-colors duration-300"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Saving..." : "Save Changes"}
