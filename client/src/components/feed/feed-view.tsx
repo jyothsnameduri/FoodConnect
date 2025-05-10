@@ -1,19 +1,45 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import { FoodPost } from "@shared/schema";
 import { PostCard } from "./post-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 
-export function FeedView() {
+export function FeedView({ filters }: { filters: any }) {
   const { user } = useAuth();
   const [page, setPage] = useState(1);
   const limit = 8;
 
-  const { data: posts, isLoading, error } = useQuery<FoodPost[]>({
-    queryKey: ["/api/posts", { limit, offset: (page - 1) * limit }],
-    keepPreviousData: true,
+  // Always fetch all posts (no filters in query string)
+  const apiUrl = `/api/posts?limit=1000`;
+
+  const { data: posts, isLoading, error }: UseQueryResult<FoodPost[]> = useQuery<FoodPost[]>({
+    queryKey: ["/api/posts", 1000],
+    queryFn: async () => {
+      const res = await fetch(apiUrl);
+      if (!res.ok) throw new Error('Failed to fetch posts');
+      return res.json();
+    },
+  });
+
+  // Frontend filtering logic
+  const filteredPosts = (posts || []).filter(post => {
+    // Type filter
+    if (filters?.type && filters.type !== 'all' && post.type !== filters.type) return false;
+    // Category filter
+    if (filters?.category && filters.category.length > 0 && !filters.category.includes(post.category)) return false;
+    // Dietary filter
+    if (filters?.dietary && filters.dietary.length > 0 && !filters.dietary.every((d: string) => post.dietary?.includes(d as typeof post.dietary[number]))) return false;
+    // Expiry filter
+    if (filters?.expiryWithin) {
+      const now = new Date();
+      const expiry = new Date(post.expiryTime);
+      const expiryLimit = new Date(now.getTime() + filters.expiryWithin * 24 * 60 * 60 * 1000);
+      if (expiry < now || expiry > expiryLimit) return false;
+    }
+    // Distance filter (not implemented, needs user location)
+    return true;
   });
 
   if (isLoading) {
@@ -60,7 +86,7 @@ export function FeedView() {
     );
   }
 
-  if (!posts || posts.length === 0) {
+  if (!filteredPosts || filteredPosts.length === 0) {
     return (
       <div className="text-center py-10 px-4 bg-[#F5F5F5] rounded-soft">
         <h3 className="text-xl font-montserrat font-semibold text-[#424242] mb-2">
@@ -86,12 +112,12 @@ export function FeedView() {
   return (
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {posts.map((post) => (
+        {filteredPosts.map((post) => (
           <PostCard key={post.id} post={post} />
         ))}
       </div>
 
-      {posts.length >= limit && (
+      {filteredPosts.length >= limit && (
         <div className="flex justify-center mt-8">
           <Button
             variant="outline"

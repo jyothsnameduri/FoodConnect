@@ -17,6 +17,9 @@ import {
   postStatuses,
   claimStatuses
 } from "@shared/schema";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 // Middleware to check if user is authenticated
 const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
@@ -40,6 +43,19 @@ const validateBody = (schema: z.ZodType<any, any>) => {
     }
   };
 };
+
+// Multer setup for food post images
+const uploadDir = path.join(__dirname, "..", "uploads", "food-images");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const upload = multer({
+  dest: uploadDir,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (file.mimetype.startsWith("image/")) cb(null, true);
+    else cb(new Error("Only image files are allowed!"));
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
@@ -119,6 +135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         latitude,
         longitude,
         distance,
+        expiryWithin,
         limit,
         offset
       } = req.query;
@@ -135,6 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         options.nearLongitude = Number(longitude);
       }
       if (distance) options.maxDistance = Number(distance);
+      if (expiryWithin) options.expiryWithin = Number(expiryWithin);
       if (limit) options.limit = Number(limit);
       if (offset) options.offset = Number(offset);
 
@@ -215,26 +233,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(
     "/api/posts/:id/images",
     isAuthenticated,
-    validateBody(insertFoodPostImageSchema),
+    upload.single("image"),
     async (req, res, next) => {
       try {
         const postId = Number(req.params.id);
         const post = await storage.getFoodPost(postId);
-        
-        if (!post) {
-          return res.status(404).json({ error: "Post not found" });
-        }
-        
-        // Check if the user is the owner of the post
-        if (post.userId !== req.user!.id) {
-          return res.status(403).json({ error: "You can only add images to your own posts" });
-        }
-        
+        if (!post) return res.status(404).json({ error: "Post not found" });
+        if (post.userId !== req.user!.id) return res.status(403).json({ error: "You can only add images to your own posts" });
+        // Type assertion for multer file
+        const file = (req as any).file as Express.Multer.File | undefined;
+        if (!file) return res.status(400).json({ error: "No image file uploaded" });
+        // Save the image info in the DB
         const image = await storage.addFoodPostImage({
-          ...req.body,
-          postId
+          postId,
+          imageUrl: `/uploads/food-images/${file.filename}`
         });
-        
         res.status(201).json(image);
       } catch (error) {
         next(error);
@@ -340,58 +353,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new claim
   app.post("/api/claims", isAuthenticated, validateBody(insertClaimSchema), async (req, res, next) => {
     try {
-      const { postId, status, message, contactPreference } = req.body;
-      
+      const { postId, message, contactPreference } = req.body;
       // Verify the post exists
       const post = await storage.getFoodPost(postId);
-      if (!post) {
-        return res.status(404).json({ error: "Post not found" });
-      }
-      
-      // Check if post is available
-      if (post.status !== "available") {
-        return res.status(400).json({ error: "This post is no longer available" });
-      }
-      
-      // Check if user is trying to claim their own post
-      if (post.userId === req.user!.id) {
-        return res.status(400).json({ error: "You cannot claim your own post" });
-      }
-      
-      // Check if user already has a pending or approved claim for this post
-      const existingClaims = await storage.getClaims({ 
-        postId, 
-        claimerId: req.user!.id,
-        status: ["pending", "approved"]
-      });
-      
-      if (existingClaims.length > 0) {
-        return res.status(400).json({ error: "You already have a pending or approved claim for this post" });
-      }
-      
-      // Create the claim
+      if (!post) return res.status(404).json({ error: "Post not found" });
+      // Only allow if post is available
+      if (post.status !== "available") return res.status(400).json({ error: "This post is no longer available" });
+      // Prevent self-claim
+      const allClaims = await storage.getClaims({ postId });
+      const existing = allClaims.filter((c: any) => c.status === "pending" || c.status === "approved");
+      if (existing.length > 0) return res.status(400).json({ error: "Already claimed or pending" });
+      // Create claim
       const claim = await storage.createClaim({
         postId,
         claimerId: req.user!.id,
-        status: "pending",
         message,
         contactPreference: contactPreference || "in_app"
       });
-      
-      // Create notification for post owner
+      // Notify post owner
       await storage.createNotification({
         userId: post.userId,
-        type: "claim",
-        title: "New claim on your post",
-        message: `Someone has claimed your ${post.title}`,
+        type: "claim_request",
+        title: "New response to your request",
+        message: `${req.user!.username} responded to your request: ${post.title}`,
         relatedId: claim.id,
         relatedType: "claim"
       });
-      
       res.status(201).json(claim);
-    } catch (error) {
-      next(error);
-    }
+    } catch (error) { next(error); }
   });
   
   // Get all claims for a post
@@ -455,23 +444,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const claimId = Number(req.params.id);
         const claim = await storage.getClaim(claimId);
-        
-        if (!claim) {
-          return res.status(404).json({ error: "Claim not found" });
-        }
-        
-        // Get post to check ownership
+        if (!claim) return res.status(404).json({ error: "Claim not found" });
         const post = await storage.getFoodPost(claim.postId);
-        
-        if (!post) {
-          return res.status(404).json({ error: "Associated post not found" });
+        if (!post) return res.status(404).json({ error: "Associated post not found" });
+        // Accept claim
+        if (req.body.status === "approved" && req.user!.id === post.userId) {
+          await storage.updateClaim(claimId, { status: "approved" });
+          await storage.updateFoodPost(post.id, { status: "claimed" });
+          // Reject other pending claims
+          const pendingClaims = await storage.getClaims({ postId: post.id, status: "pending" });
+          for (const other of pendingClaims) {
+            if (other.id !== claimId) await storage.updateClaim(other.id, { status: "rejected" });
+          }
+          // Notify claimer
+          await storage.createNotification({
+            userId: claim.claimerId,
+            type: "claim_accepted",
+            title: "Your response was accepted",
+            message: `Your response to \"${post.title}\" was accepted.`,
+            relatedId: claimId,
+            relatedType: "claim"
+          });
+          return res.json({ success: true });
         }
-        
+        // Mark as completed
+        if (req.body.status === "completed" && (req.user!.id === post.userId || req.user!.id === claim.claimerId)) {
+          await storage.updateClaim(claimId, { status: "completed" });
+          await storage.updateFoodPost(post.id, { status: "completed" });
+          // Notify both users
+          await storage.createNotification({
+            userId: post.userId,
+            type: "claim_completed",
+            title: "Pickup completed",
+            message: `The pickup for \"${post.title}\" is marked as completed.`,
+            relatedId: claimId,
+            relatedType: "claim"
+          });
+          await storage.createNotification({
+            userId: claim.claimerId,
+            type: "claim_completed",
+            title: "Pickup completed",
+            message: `The pickup for \"${post.title}\" is marked as completed.`,
+            relatedId: claimId,
+            relatedType: "claim"
+          });
+          return res.json({ success: true });
+        }
+        // Default: fallback to original logic
         // Check permissions based on the update being performed
         if (req.body.status) {
-          // Status updates have specific permissions
           if (post.userId === req.user!.id) {
-            // Post owner can approve or reject or complete
             if (
               req.body.status !== "approved" && 
               req.body.status !== "rejected" && 
@@ -482,7 +504,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             }
           } else if (claim.claimerId === req.user!.id) {
-            // Claimer can cancel or mark as in_progress or complete
             if (
               req.body.status !== "cancelled" && 
               req.body.status !== "in_progress" && 
@@ -498,14 +519,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
         } else {
-          // Other updates can only be done by the claimer
           if (claim.claimerId !== req.user!.id) {
             return res.status(403).json({ 
               error: "You can only update your own claims" 
             });
           }
         }
-        
         const updatedClaim = await storage.updateClaim(claimId, req.body);
         res.json(updatedClaim);
       } catch (error) {
@@ -863,6 +882,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const count = await storage.getUnreadMessageCount(req.user!.id);
       res.json({ count });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // User profile with stats, ratings, and history
+  app.get("/api/users/:id/profile", async (req, res, next) => {
+    try {
+      const userId = Number(req.params.id);
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const ratings = await storage.getRatingsByUserId(userId);
+      // Recent donations made (as posts)
+      const allDonations = await storage.getFoodPosts({ userId, type: "donation", limit: 20 });
+      const donations = allDonations.filter((p: any) => p.status === "completed").slice(0, 5);
+      // Recent donations received (as claims)
+      const allClaims = await storage.getClaims({ claimerId: userId, limit: 20 });
+      const claims = allClaims.filter((c: any) => c.status === "completed").slice(0, 5);
+      res.json({
+        id: user.id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        bio: user.bio,
+        profileImage: user.profileImage,
+        donationCount: user.donationCount,
+        receivedCount: user.receivedCount,
+        averageRating: user.averageRating,
+        ratingCount: user.ratingCount,
+        isTrusted: user.isTrusted,
+        createdAt: user.createdAt,
+        ratings,
+        recentDonations: donations,
+        recentReceived: claims
+      });
     } catch (error) {
       next(error);
     }

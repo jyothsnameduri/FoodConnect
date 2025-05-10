@@ -1,8 +1,10 @@
 import { Link } from "wouter";
 import { FoodPost } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { MapPin, Clock, CalendarDays } from "lucide-react";
+import { formatDistanceToNow, format } from "date-fns";
+import { ClaimButton } from "@/components/post/claim-button";
+import { useEffect, useState } from "react";
 
 interface PostCardProps {
   post: FoodPost;
@@ -50,76 +52,105 @@ export function PostCard({ post }: PostCardProps) {
     }
   };
 
+  // Mapbox reverse geocoding for location name
+  const [locationName, setLocationName] = useState<string | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  useEffect(() => {
+    if (post.latitude && post.longitude) {
+      setLocationLoading(true);
+      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${post.longitude},${post.latitude}.json?access_token=pk.eyJ1IjoibmFuaS0wMDciLCJhIjoiY21hYnppcDlrMjYwZzJ3c2JqOHdhYmVpbCJ9.f2Ok8ZFGgkuAJyIYlQZxNA&limit=1`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.features && data.features.length > 0) {
+            setLocationName(data.features[0].place_name);
+          } else {
+            setLocationName(null);
+          }
+        })
+        .catch(() => setLocationName(null))
+        .finally(() => setLocationLoading(false));
+    }
+  }, [post.latitude, post.longitude]);
+
   return (
-    <div className="bg-white rounded-soft shadow-soft overflow-hidden transition-all duration-300 hover:shadow-medium">
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl border border-[#F0F0F0] group flex flex-col justify-between">
+      <div>
       <div className="relative">
         <img 
           src={defaultImage} 
           alt={post.title} 
-          className="w-full h-48 object-cover" 
+            className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" 
         />
-        <div className="absolute top-2 right-2">
+          <div className="absolute top-2 right-2 z-10">
           <span 
             className={`
-              text-xs font-montserrat font-semibold px-2 py-1 rounded-full
+                text-xs font-montserrat font-semibold px-3 py-1 rounded-full shadow-md
               ${post.type === 'donation' 
-                ? 'bg-[#4CAF50]/10 text-[#4CAF50]' 
-                : 'bg-[#42A5F5]/10 text-[#42A5F5]'}
+                  ? 'bg-[#4CAF50] text-white' 
+                  : 'bg-[#42A5F5] text-white'}
             `}
+              style={{ textShadow: '0 1px 4px rgba(0,0,0,0.15)' }}
           >
             {post.type === 'donation' ? 'Donation' : 'Request'}
-          </span>
-        </div>
-        {post.status !== 'available' && (
-          <div className="absolute bottom-0 left-0 right-0 bg-black/50 py-1 px-2 text-center">
-            <span className={`text-xs font-montserrat font-semibold px-2 py-0.5 rounded-full ${getStatusColor()}`}>
-              {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
             </span>
           </div>
-        )}
       </div>
 
-      <div className="p-4">
-        <div className="flex justify-between items-start">
-          <h3 className="font-montserrat font-semibold text-lg">
+        <div className="p-5 flex flex-col gap-2">
+          <div className="flex justify-between items-center mb-1">
+            <h3 className="font-montserrat font-bold text-lg text-[#222] leading-tight truncate">
             <Link href={`/posts/${post.id}`} className="hover:text-[#4CAF50] transition-colors">
               {post.title}
             </Link>
           </h3>
         </div>
-        
-        <div className="flex items-center text-[#9E9E9E] text-sm mt-1">
-          <MapPin className="inline-block w-3 h-3 mr-1" /> 
-          <span className="truncate">{post.address}</span>
+          <div className="flex items-center gap-2 text-[#4CAF50] text-sm font-semibold mt-1">
+            <MapPin className="inline-block w-4 h-4 text-[#4CAF50]" />
+            <span>Location</span>
+          </div>
+          {post.latitude && post.longitude && (
+            <div className="bg-[#F5F5F5] rounded-md px-3 py-2 text-xs text-[#424242] font-opensans mb-1 flex items-center gap-2">
+              <span className="truncate w-full" title={locationName || undefined}>
+                {locationLoading ? 'Loading location...' : (locationName || `Lat: ${post.latitude}, Lng: ${post.longitude}`)}
+              </span>
         </div>
-        
-        <p className="font-opensans text-sm mt-2 text-[#424242] line-clamp-2">
+          )}
+          <div className="border-t border-[#E0E0E0] my-2" />
+          <p className="font-opensans text-sm text-[#424242] line-clamp-2 mb-1">
           {post.description}
         </p>
-        
-        <div className="mt-2 text-xs text-[#9E9E9E] flex items-center">
+          <div className="flex flex-row items-center gap-3 mt-2">
+            <span className="inline-flex items-center bg-[#FFF3E0] text-[#FF9800] text-xs px-3 py-1 rounded-full font-semibold">
+              <CalendarDays className="w-3 h-3 mr-1" />
+              {calculateExpiryTime()}
+            </span>
+            <span className="flex items-center text-xs text-[#9E9E9E]">
           <Clock className="w-3 h-3 mr-1" />
-          {calculateExpiryTime()}
-        </div>
-        
-        <div className="mt-4 flex justify-between items-center">
-          <div className="text-xs text-[#9E9E9E]">
-            Posted {formattedDate}
+              Posted {formattedDate}
+            </span>
           </div>
-          
-          <Button 
-            className={`
-              px-3 py-1 text-sm rounded-soft text-white
-              ${post.type === 'donation' 
-                ? 'bg-[#4CAF50] hover:bg-[#388E3C]' 
-                : 'bg-[#42A5F5] hover:bg-[#1976D2]'}
-            `}
-            asChild
-          >
-            <Link href={`/posts/${post.id}`}>
-              {post.type === 'donation' ? 'Claim' : 'Respond'}
-            </Link>
-          </Button>
+        </div>
+      </div>
+      <div className="bg-[#FAFAFA] px-5 py-3 flex flex-col gap-2 border-t border-[#F0F0F0]">
+        {/* Rich claimed/completed message */}
+        {post.status === 'claimed' && post.updatedAt && (
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center text-base font-semibold text-blue-800 bg-blue-100 rounded-lg px-4 py-2 shadow-sm">
+              <Clock className="w-4 h-4 mr-2 text-blue-500" />
+              Claimed @ {format(new Date(post.updatedAt), 'MMM d, yyyy h:mm a')}
+            </span>
+          </div>
+        )}
+        {post.status === 'completed' && post.updatedAt && (
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center text-base font-semibold text-purple-800 bg-purple-100 rounded-lg px-4 py-2 shadow-sm">
+              <Clock className="w-4 h-4 mr-2 text-purple-500" />
+              Completed @ {format(new Date(post.updatedAt), 'MMM d, yyyy h:mm a')}
+            </span>
+          </div>
+        )}
+        <div>
+          <ClaimButton post={post} />
         </div>
       </div>
     </div>

@@ -35,6 +35,7 @@ import {
 import { formatDistanceToNow, format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { StatusTimeline } from "@/components/ui/status-timeline";
 
 export default function PostDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -240,6 +241,13 @@ export default function PostDetailPage() {
                 </div>
               </div>
               
+              {/* Status Timeline */}
+              <StatusTimeline
+                createdAt={post.createdAt}
+                currentStatus={post.status}
+                // claimedAt, pickedUpAt, completedAt, expiredAt can be added if available
+              />
+              
               <p className="text-[#424242] mb-6 whitespace-pre-line">
                 {post.description}
               </p>
@@ -257,7 +265,7 @@ export default function PostDetailPage() {
                   <MapPin className="h-5 w-5 text-[#FF9800] mr-3 mt-0.5" />
                   <div>
                     <h3 className="font-montserrat font-semibold text-[#424242]">Location</h3>
-                    <p className="text-[#9E9E9E]">{post.address}</p>
+                    <p className="text-[#9E9E9E]">Location on map</p>
                   </div>
                 </div>
                 
@@ -409,7 +417,7 @@ export default function PostDetailPage() {
               </div>
               
               <p className="text-[#9E9E9E] text-sm">
-                {post.address}
+                Location on map
               </p>
             </div>
             

@@ -21,13 +21,14 @@ import {
   type Notification,
   type InsertNotification,
   type Message,
-  type InsertMessage
+  type InsertMessage,
+  postStatuses
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import connectPg from "connect-pg-simple";
 import { db, pool } from "./db";
-import { eq, and, inArray, desc, gt, lt, gte, lte, like, or, sql } from "drizzle-orm";
+import { eq, and, inArray, desc, gt, lt, gte, lte, like, or, sql, notInArray } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
 const MemoryStore = createMemoryStore(session);
@@ -54,6 +55,7 @@ export interface IStorage {
     nearLatitude?: number;
     nearLongitude?: number;
     maxDistance?: number;
+    expiryWithin?: number;
     limit?: number;
     offset?: number;
   }): Promise<FoodPost[]>;
@@ -71,7 +73,7 @@ export interface IStorage {
   getClaims(options?: {
     postId?: number;
     claimerId?: number;
-    status?: string;
+    status?: "completed" | "cancelled" | "pending" | "approved" | "rejected";
     limit?: number;
     offset?: number;
   }): Promise<Claim[]>;
@@ -174,6 +176,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFoodPost(id: number): Promise<FoodPost | undefined> {
+    await this.expirePosts();
     const [post] = await db
       .select()
       .from(foodPosts)
@@ -191,9 +194,11 @@ export class DatabaseStorage implements IStorage {
     nearLatitude?: number;
     nearLongitude?: number;
     maxDistance?: number;
+    expiryWithin?: number;
     limit?: number;
     offset?: number;
   } = {}): Promise<FoodPost[]> {
+    await this.expirePosts();
     let query = db.select().from(foodPosts);
     
     // Apply filters
@@ -221,6 +226,18 @@ export class DatabaseStorage implements IStorage {
         or(
           like(foodPosts.title, searchTerm),
           like(foodPosts.description, searchTerm)
+        )
+      );
+    }
+    
+    // Add expiryWithin filter
+    if (options.expiryWithin) {
+      const now = new Date();
+      const expiryLimit = new Date(now.getTime() + options.expiryWithin * 24 * 60 * 60 * 1000);
+      conditions.push(
+        and(
+          gte(foodPosts.expiryTime, now),
+          lte(foodPosts.expiryTime, expiryLimit)
         )
       );
     }
@@ -353,7 +370,7 @@ export class DatabaseStorage implements IStorage {
   async getClaims(options: {
     postId?: number;
     claimerId?: number;
-    status?: string;
+    status?: "completed" | "cancelled" | "pending" | "approved" | "rejected";
     limit?: number;
     offset?: number;
   } = {}): Promise<Claim[]> {
@@ -733,6 +750,45 @@ export class DatabaseStorage implements IStorage {
       .where(eq(messages.id, id));
       
     return result.count > 0;
+  }
+
+  // Send near-expiry notifications for posts expiring in 1 day
+  async sendNearExpiryNotifications() {
+    // Find posts expiring in 24-25 hours
+    const now = new Date();
+    const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const in25h = new Date(now.getTime() + 25 * 60 * 60 * 1000);
+    const posts = await db.select().from(foodPosts)
+      .where(and(
+        gte(foodPosts.expiryTime, in24h),
+        lte(foodPosts.expiryTime, in25h)
+      ));
+    for (const post of posts) {
+      // Find active claim (pending/claimed/approved)
+      const claims = await this.getClaims({ postId: post.id });
+      const activeClaim = claims.find(c => ["pending", "claimed", "approved"].includes(c.status));
+      if (activeClaim) {
+        await this.createNotification({
+          userId: activeClaim.claimerId,
+          type: "expiry_warning",
+          title: "Request expiring soon",
+          message: "Your request expires in 1 day.",
+          relatedId: post.id,
+          relatedType: "post"
+        });
+      }
+    }
+  }
+
+  // Expire posts whose expiryTime has passed
+  async expirePosts() {
+    const now = new Date();
+    await db.update(foodPosts)
+      .set({ status: "expired" })
+      .where(and(
+        lt(foodPosts.expiryTime, now),
+        notInArray(foodPosts.status, [postStatuses[3], postStatuses[4]]) // "completed", "expired"
+      ));
   }
 }
 

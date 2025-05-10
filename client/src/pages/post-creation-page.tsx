@@ -42,6 +42,11 @@ import {
 import { format } from "date-fns";
 import { CalendarIcon, ChevronLeft, Loader2, Plus, X, Gift } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import MapGL, { Marker } from 'react-map-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+
+// If you see a type error for 'react-helmet', run: npm install --save-dev @types/react-helmet
+// Or add a file react-helmet.d.ts with: declare module 'react-helmet';
 
 // Create a schema that extends the insertFoodPostSchema for the form
 const postFormSchema = z.object({
@@ -50,14 +55,23 @@ const postFormSchema = z.object({
   quantity: z.string().min(1, "Quantity is required"),
   category: z.enum((foodCategories as unknown) as [string, ...string[]]),
   dietary: z.array(z.enum((dietaryOptions as unknown) as [string, ...string[]])).optional(),
-  address: z.string().min(5, "Address is required"),
-  // Removed pickup date/time fields
+  latitude: z.number({ required_error: "Latitude is required" }),
+  longitude: z.number({ required_error: "Longitude is required" }),
   expiryDate: z.date({ required_error: "Expiry date is required" }),
   expiryTime: z.string(),
   // Image is handled separately
 });
 
 type PostFormValues = z.infer<typeof postFormSchema>;
+
+// Add type for enums response
+type EnumsResponse = {
+  foodCategories: string[];
+  dietaryOptions: string[];
+  // add other enums if needed
+};
+
+const MAPBOX_TOKEN = 'pk.eyJ1IjoibmFuaS0wMDciLCJhIjoiY21hYnppcDlrMjYwZzJ3c2JqOHdhYmVpbCJ9.f2Ok8ZFGgkuAJyIYlQZxNA';
 
 export default function PostCreationPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -74,13 +88,13 @@ export default function PostCreationPage() {
   const { toast } = useToast();
 
   // Get enum values from the server if needed
-  const { data: enums } = useQuery({
+  const { data: enums } = useQuery<EnumsResponse>({
     queryKey: ["/api/enums"],
   });
 
   // Use the server enum values or fallback to constants
-  const categories = enums?.foodCategories || foodCategories;
-  const dietary = enums?.dietaryOptions || dietaryOptions;
+  const categories: string[] = Array.from(enums?.foodCategories ?? foodCategories);
+  const dietary: string[] = Array.from(enums?.dietaryOptions ?? dietaryOptions);
 
   // Calculate today and tomorrow for date constraints
   const today = new Date();
@@ -96,12 +110,38 @@ export default function PostCreationPage() {
       quantity: "",
       category: "meal",
       dietary: [],
-      address: "",
-      // Only keeping expiry date/time fields
+      latitude: undefined,
+      longitude: undefined,
       expiryDate: tomorrow,
       expiryTime: "23:59",
     },
   });
+
+  // Add state for location search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Function to search Mapbox Geocoding API
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (!query) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const res = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=5`
+      );
+      const data = await res.json();
+      setSearchResults(data.features || []);
+    } catch (e) {
+      setSearchResults([]);
+    }
+    setIsSearching(false);
+  };
 
   // Handle image selection
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,16 +230,14 @@ export default function PostCreationPage() {
         // Format the date directly as a string in ISO format for consistent handling
         const expiryTimeIso = expiryTime.toISOString();
         
-        // Create a payload with all required fields including userId
+        // Create a payload with all required fields (do NOT include userId)
         const payload = {
-          userId: currentUser.id, // Add userId explicitly as required by the server
           type: initialType,
           title: sanitizeString(formData.title),
           description: sanitizeString(formData.description),
           quantity: sanitizeString(formData.quantity),
           category: formData.category,
           dietary: Array.isArray(formData.dietary) ? formData.dietary : [],
-          address: sanitizeString(formData.address),
           latitude: formData.latitude || 37.7749,
           longitude: formData.longitude || -122.4194,
           expiryTime: expiryTimeIso
@@ -231,8 +269,9 @@ export default function PostCreationPage() {
           
           console.log("Server response status:", response.status);
         } catch (fetchError) {
-          console.error("Network error during fetch:", fetchError);
-          throw new Error(`Network error: ${fetchError.message || 'Failed to connect to server'}`);
+          const err = fetchError as Error;
+          console.error("Network error during fetch:", err);
+          throw new Error(`Network error: ${err.message || 'Failed to connect to server'}`);
         }
 
         if (!response.ok) {
@@ -347,9 +386,9 @@ export default function PostCreationPage() {
         quantity: sanitizeString(values.quantity),
         category: values.category,
         dietary: Array.isArray(values.dietary) ? values.dietary : [],
-        address: sanitizeString(values.address),
-        latitude: 37.7749, // Default latitude
-        longitude: -122.4194 // Default longitude
+        latitude: values.latitude || 37.7749,
+        longitude: values.longitude || -122.4194,
+        expiryTime: expiryTime.toISOString()
         // Date fields have been removed from the schema requirements
         // Note: We're not including status as it has a default value in the schema
       };
@@ -365,28 +404,18 @@ export default function PostCreationPage() {
       setStep(step + 1);
       return;
     }
-
-    // Validate required fields before submission
-    if (!values.title || !values.description || !values.quantity || !values.category || !values.address) {
+    if (!values.title || !values.description || !values.quantity || !values.category || values.latitude === undefined || values.longitude === undefined) {
       toast({
         title: "Missing required fields",
-        description: "Please fill in all required fields before submitting.",
+        description: "Please fill in all required fields and select a pickup location on the map before submitting.",
         variant: "destructive",
       });
       return;
     }
-
     try {
-      // Create API data with proper formatting
       const apiData = convertFormToApiData(values);
-      
-      // Log the data being submitted for debugging
-      console.log("Submitting post data:", apiData);
-      
-      // Submit the form data
       createPostMutation.mutate(apiData);
     } catch (error) {
-      console.error("Error preparing form data:", error);
       toast({
         title: "Form Error",
         description: error instanceof Error ? error.message : "Failed to process form data",
@@ -486,8 +515,6 @@ export default function PostCreationPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {step === 1 && (
                 <div className="space-y-6">
-
-
                   <FormField
                     control={form.control}
                     name="title"
@@ -581,9 +608,9 @@ export default function PostCreationPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {categories.map((category) => (
+                            {categories.map((category: string) => (
                               <SelectItem key={category} value={category}>
-                                {category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                {category.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -607,7 +634,7 @@ export default function PostCreationPage() {
                           </FormDescription>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                          {dietary.map((option) => (
+                          {dietary.map((option: string) => (
                             <FormField
                               key={option}
                               control={form.control}
@@ -626,7 +653,7 @@ export default function PostCreationPage() {
                                           return checked
                                             ? field.onChange([...current, option])
                                             : field.onChange(
-                                                current.filter((value) => value !== option)
+                                                current.filter((value: string) => value !== option)
                                               );
                                         }}
                                         disabled={createPostMutation.isPending}
@@ -646,29 +673,79 @@ export default function PostCreationPage() {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="font-opensans font-semibold text-[#424242]">
-                          Pickup Location <span className="text-red-500">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter the address or general area for pickup"
-                            {...field}
-                            className="w-full px-4 py-2 border border-[#E0E0E0] rounded-soft focus:outline-none focus:border-[#4CAF50]"
-                            disabled={createPostMutation.isPending}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          For safety, we recommend using a public location or general area instead of your exact home address.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
+                  <div>
+                    <FormLabel className="font-opensans font-semibold text-[#424242] block mb-2">
+                      Pickup Location <span className="text-red-500">*</span>
+                    </FormLabel>
+                    {/* Location Search Box */}
+                    <div className="mb-2 relative z-20">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={e => handleSearch(e.target.value)}
+                        placeholder="Search for a location..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded"
+                      />
+                      {isSearching && <div className="absolute left-0 right-0 bg-white border border-gray-200 rounded shadow mt-1 px-3 py-2">Searching...</div>}
+                      {searchResults.length > 0 && (
+                        <ul className="absolute left-0 right-0 bg-white border border-gray-200 rounded shadow mt-1 max-h-40 overflow-y-auto">
+                          {searchResults.map((result: any) => (
+                            <li
+                              key={result.id}
+                              className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                              onClick={() => {
+                                const [lng, lat] = result.center;
+                                form.setValue('latitude', lat);
+                                form.setValue('longitude', lng);
+                                setSearchQuery(result.place_name);
+                                setSearchResults([]);
+                              }}
+                            >
+                              {result.place_name}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    <div style={{ width: '100%', height: 300, borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
+                      <MapGL
+                        width="100%"
+                        height="100%"
+                        latitude={typeof form.watch('latitude') === 'number' ? form.watch('latitude') : 20.5937}
+                        longitude={typeof form.watch('longitude') === 'number' ? form.watch('longitude') : 78.9629}
+                        zoom={form.watch('latitude') && form.watch('longitude') ? 14 : 4}
+                        mapboxApiAccessToken={MAPBOX_TOKEN}
+                        onClick={e => {
+                          const [lng, lat] = e.lngLat;
+                          form.setValue('latitude', lat);
+                          form.setValue('longitude', lng);
+                          setSearchQuery(''); // clear search box if user clicks map
+                        }}
+                        mapStyle="mapbox://styles/mapbox/streets-v11"
+                      >
+                        {form.watch('latitude') && form.watch('longitude') && (
+                          <Marker
+                            latitude={typeof form.watch('latitude') === 'number' ? form.watch('latitude') : 20.5937}
+                            longitude={typeof form.watch('longitude') === 'number' ? form.watch('longitude') : 78.9629}
+                            offsetLeft={-16}
+                            offsetTop={-32}
+                          >
+                            <div style={{ color: '#4CAF50', fontSize: 32 }}>📍</div>
+                          </Marker>
+                        )}
+                      </MapGL>
+                    </div>
+                    {form.watch('latitude') && form.watch('longitude') && (
+                      <div className="mt-2 text-sm text-gray-600">
+                        <span>Latitude: {form.watch('latitude')}</span><br />
+                        <span>Longitude: {form.watch('longitude')}</span>
+                      </div>
                     )}
-                  />
+                    <FormDescription>
+                      Click on the map to select a pickup location. For safety, we recommend using a public location or general area instead of your exact home address.
+                    </FormDescription>
+                    <FormMessage />
+                  </div>
                 </div>
               )}
 

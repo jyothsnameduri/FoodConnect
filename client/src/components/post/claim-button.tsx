@@ -16,8 +16,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Gift, HandHelping, Loader2 } from "lucide-react";
+import { Gift, HandHelping, Loader2, Info } from "lucide-react";
 
 interface ClaimButtonProps {
   post: FoodPost;
@@ -32,13 +38,15 @@ export function ClaimButton({ post }: ClaimButtonProps) {
   // Check if the post belongs to the current user
   const isUsersPost = user?.id === post.userId;
 
+  // Only allow claim if post is available
+  const isClaimable = post.status === 'available';
+
   // Create claim mutation
   const createClaimMutation = useMutation({
     mutationFn: async () => {
       const claimData: Partial<InsertClaim> = {
         postId: post.id,
-        claimerId: user?.id,
-        status: "pending" 
+        claimerId: user?.id
       };
       
       const res = await apiRequest("POST", "/api/claims", claimData);
@@ -91,31 +99,64 @@ export function ClaimButton({ post }: ClaimButtonProps) {
 
   // Donation vs Request styling
   const buttonClassName = post.type === "donation"
-    ? "bg-[#4CAF50] text-white hover:bg-[#388E3C]"
-    : "bg-[#42A5F5] text-white hover:bg-[#1976D2]";
+    ? isUsersPost 
+      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+      : "bg-[#4CAF50] text-white hover:bg-[#388E3C]"
+    : isUsersPost
+      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+      : "bg-[#42A5F5] text-white hover:bg-[#1976D2]";
   
   const buttonIcon = post.type === "donation"
     ? <Gift className="h-4 w-4 mr-2" />
     : <HandHelping className="h-4 w-4 mr-2" />;
   
   const buttonText = post.type === "donation"
-    ? "Claim This Item"
-    : "Respond to Request";
+    ? isUsersPost ? "Your Donation" : "Claim This Item"
+    : isUsersPost ? "Your Request" : "Respond to Request";
+
+  const button = (
+    <Button 
+      className={buttonClassName}
+      onClick={handleClaim}
+      disabled={createClaimMutation.isPending || isUsersPost || !isClaimable}
+    >
+      {createClaimMutation.isPending ? (
+        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+      ) : (
+        buttonIcon
+      )}
+      {buttonText}
+      {isUsersPost && <Info className="h-4 w-4 ml-2" />}
+    </Button>
+  );
 
   return (
     <>
-      <Button 
-        className={buttonClassName}
-        onClick={handleClaim}
-        disabled={createClaimMutation.isPending || isUsersPost}
-      >
-        {createClaimMutation.isPending ? (
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-        ) : (
-          buttonIcon
-        )}
-        {buttonText}
-      </Button>
+      {!isClaimable && (
+        <div className="mb-2">
+          <span className={`inline-block px-2 py-1 text-xs rounded-full font-semibold ${
+            post.status === 'claimed' ? 'bg-blue-100 text-blue-800' :
+            post.status === 'completed' ? 'bg-green-100 text-green-800' :
+            'bg-gray-100 text-gray-800'
+          }`}>
+            {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
+          </span>
+        </div>
+      )}
+      {isUsersPost ? (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {button}
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>You cannot claim your own {post.type === "donation" ? "donation" : "request"}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        button
+      )}
 
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>

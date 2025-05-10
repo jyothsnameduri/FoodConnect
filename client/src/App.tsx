@@ -18,6 +18,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { AuthProvider } from "@/hooks/use-auth";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import ActivityPage from "@/pages/activity-page";
 
 function Router() {
   return (
@@ -57,6 +58,9 @@ function Router() {
         <Route path="/find">
           {() => (window.location.href = "/feed")}
         </Route>
+        <ProtectedRoute path="/activity">
+          <ActivityPage />
+        </ProtectedRoute>
         {/* Add any other redirect routes here */}
         <Route path="*">
           <NotFound />

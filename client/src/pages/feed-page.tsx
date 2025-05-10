@@ -23,7 +23,7 @@ export default function FeedPage() {
   // State for all filter values
   const [activeFilters, setActiveFilters] = useState({
     distance: 5,
-    categories: [] as string[],
+    category: [] as string[],
     dietary: [] as string[],
     expiryWithin: 7,
     type: 'all' as 'all' | 'donation' | 'request'
@@ -32,7 +32,7 @@ export default function FeedPage() {
   // Function to update filters safely with type checking
   const updateFilters = (filters: {
     distance: number;
-    categories: string[];
+    category: string[];
     dietary: string[];
     expiryWithin?: number;
     type?: 'all' | 'donation' | 'request';
@@ -40,15 +40,12 @@ export default function FeedPage() {
     setActiveFilters({
       ...activeFilters,
       distance: filters.distance,
-      categories: filters.categories,
+      category: filters.category,
       dietary: filters.dietary,
       expiryWithin: filters.expiryWithin ?? activeFilters.expiryWithin,
       type: filters.type ?? activeFilters.type
     });
   };
-  
-  // State for filtered posts
-  const [filteredPosts, setFilteredPosts] = useState<any[]>([]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,13 +64,13 @@ export default function FeedPage() {
       </Helmet>
 
       <div className="container mx-auto px-4 py-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <h1 className="font-montserrat font-bold text-2xl md:text-3xl text-[#424242]">
+        <div className="flex flex-row items-center justify-between mb-4 w-full gap-4">
+          <div className="flex-1" />
+          <h1 className="font-montserrat font-extrabold text-3xl md:text-5xl text-[#424242] text-center flex-1">
             Find Food
           </h1>
-
-          <div className="flex w-full md:w-auto">
-            <form onSubmit={handleSearch} className="relative flex w-full md:w-auto">
+          <div className="flex flex-row items-center gap-4 flex-1 justify-end">
+            <form onSubmit={handleSearch} className="relative flex w-full md:w-auto md:mr-2">
               <Input
                 type="text"
                 placeholder="Search for food items..."
@@ -90,10 +87,9 @@ export default function FeedPage() {
                 <Search className="h-5 w-5" />
               </Button>
             </form>
-
             <Button
-              variant="outline"
-              className="ml-2 border border-[#E0E0E0] text-[#424242] hover:bg-[#F5F5F5]"
+              variant="default"
+              className="bg-[#4CAF50] text-white font-bold px-6 py-2 rounded-lg shadow-lg text-base hover:bg-[#388E3C] focus:ring-2 focus:ring-[#4CAF50] focus:outline-none transition-all duration-200"
               onClick={() => setShowFilters(!showFilters)}
             >
               Filters
@@ -105,49 +101,8 @@ export default function FeedPage() {
           <FilterPanel 
             onClose={() => setShowFilters(false)} 
             onApplyFilters={(filters) => {
-              // Use our type-safe update function
               updateFilters(filters);
-              
-              // Here you would fetch filtered posts from the API
-              console.log("Fetching posts with filters:", filters);
-              
-              // Example of how to fetch filtered posts
-              const queryParams = new URLSearchParams();
-              
-              if (filters.type && filters.type !== 'all') {
-                queryParams.set('type', filters.type);
-              }
-              
-              if (filters.distance) {
-                queryParams.set('distance', filters.distance.toString());
-              }
-              
-              if (filters.categories.length > 0) {
-                queryParams.set('categories', filters.categories.join(','));
-              }
-              
-              if (filters.dietary.length > 0) {
-                queryParams.set('dietary', filters.dietary.join(','));
-              }
-              
-              if (filters.expiryWithin) {
-                queryParams.set('expiryWithin', filters.expiryWithin.toString());
-              }
-              
-              // Build the API URL with query parameters
-              const apiUrl = `/api/posts?${queryParams.toString()}`;
-              console.log("Fetching from URL:", apiUrl);
-              
-              // Fetch the filtered posts
-              fetch(apiUrl)
-                .then(response => response.json())
-                .then(data => {
-                  console.log("Filtered posts received:", data);
-                  setFilteredPosts(data);
-                })
-                .catch(error => {
-                  console.error("Error fetching filtered posts:", error);
-                });
+              setShowFilters(false);
             }}
           />}
 
@@ -171,35 +126,14 @@ export default function FeedPage() {
                 Map View
               </TabsTrigger>
             </TabsList>
-
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                className="border border-[#E0E0E0] text-[#4CAF50] font-montserrat font-semibold"
-              >
-                Filter: All
-              </Button>
-              <Button
-                variant="outline"
-                className="border border-[#E0E0E0] text-[#4CAF50] bg-[#4CAF50]/10 font-montserrat font-semibold"
-              >
-                Donations
-              </Button>
-              <Button
-                variant="outline"
-                className="border border-[#E0E0E0] text-[#42A5F5] font-montserrat font-semibold"
-              >
-                Requests
-              </Button>
-            </div>
           </div>
 
           <TabsContent value="feed" className="mt-0">
-            <FeedView />
+            <FeedView filters={activeFilters} />
           </TabsContent>
 
           <TabsContent value="map" className="mt-0">
-            <MapView />
+            <MapView filters={activeFilters} />
           </TabsContent>
         </Tabs>
       </div>

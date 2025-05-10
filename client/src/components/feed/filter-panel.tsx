@@ -11,7 +11,7 @@ interface FilterPanelProps {
   onClose: () => void;
   onApplyFilters: (filters: {
     distance: number;
-    categories: string[];
+    category: string[];
     dietary: string[];
     expiryWithin?: number; // Days until expiry
     type?: 'all' | 'donation' | 'request';
@@ -61,7 +61,7 @@ export function FilterPanel({ onClose, onApplyFilters }: FilterPanelProps) {
     // Call the parent component's filter handler with all filter values
     onApplyFilters({
       distance,
-      categories: selectedCategories,
+      category: selectedCategories,
       dietary: selectedDietary,
       expiryWithin,
       type: postType
@@ -70,7 +70,7 @@ export function FilterPanel({ onClose, onApplyFilters }: FilterPanelProps) {
     // Log for debugging
     console.log("Applied filters:", { 
       distance, 
-      categories: selectedCategories, 
+      category: selectedCategories, 
       dietary: selectedDietary,
       expiryWithin,
       type: postType

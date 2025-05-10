@@ -249,11 +249,14 @@ export default function ClaimDetailPage() {
   
   // Submit rating
   const submitRatingMutation = useMutation({
-    mutationFn: async ({ rating, comment }: { rating: number; comment: string }) => {
+    mutationFn: async ({ rating, comment, toUserId }: { rating: number; comment: string; toUserId: number }) => {
+      if (!user) throw new Error("User not authenticated");
       const res = await apiRequest("POST", `/api/claims/${claimId}/rate`, {
+        claimId,
+        fromUserId: user.id,
+        toUserId,
         rating,
-        comment,
-        categories: [],
+        comment
       });
       return await res.json();
     },
@@ -363,8 +366,8 @@ export default function ClaimDetailPage() {
                       <p>{post.quantity}</p>
                     </div>
                     <div>
-                      <h3 className="font-medium">Address</h3>
-                      <p>{post.address}</p>
+                      <h3 className="font-medium">Location</h3>
+                      <p>Location on map</p>
                     </div>
                   </div>
                 </div>
@@ -608,7 +611,11 @@ export default function ClaimDetailPage() {
                       </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
-                      <RatingForm onSubmit={submitRatingMutation.mutate} />
+                      <RatingForm onSubmit={({ rating, comment }) => {
+                        if (!user) return;
+                        let toUserId = user.id === post.userId ? claim.claimerId : post.userId;
+                        submitRatingMutation.mutate({ rating, comment, toUserId });
+                      }} />
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -715,7 +722,7 @@ export default function ClaimDetailPage() {
                             </span>
                           </div>
                           <div className="flex items-center">
-                            {Array.from({ length: 5 }).map((_, i) => (
+                            {Array.from({ length: 5 }).map((_, i: number) => (
                               <Star
                                 key={i}
                                 className={`h-4 w-4 ${
@@ -752,7 +759,11 @@ export default function ClaimDetailPage() {
                         </DialogDescription>
                       </DialogHeader>
                       <div className="py-4">
-                        <RatingForm onSubmit={submitRatingMutation.mutate} />
+                        <RatingForm onSubmit={({ rating, comment }) => {
+                          if (!user) return;
+                          let toUserId = user.id === post.userId ? claim.claimerId : post.userId;
+                          submitRatingMutation.mutate({ rating, comment, toUserId });
+                        }} />
                       </div>
                     </DialogContent>
                   </Dialog>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Bell, Check, Clock, Loader2, Package, ShoppingBag, User, Star, X } from "lucide-react";
+import { Bell, Check, Clock, Loader2, Package, ShoppingBag, User, Star, X, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDistanceToNow } from "date-fns";
 import { Notification } from "@shared/schema";
@@ -22,6 +22,7 @@ export function NotificationsDropdown() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+  const [optimisticallyCleared, setOptimisticallyCleared] = useState(false);
 
   // Fetch notifications for the current user
   const { data: notifications, isLoading } = useQuery<Notification[]>({
@@ -33,7 +34,7 @@ export function NotificationsDropdown() {
   // Mark all notifications as read mutation
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/notifications/mark-all-read");
+      const res = await apiRequest("PATCH", "/api/notifications/read-all");
       return await res.json();
     },
     onSuccess: () => {
@@ -45,18 +46,17 @@ export function NotificationsDropdown() {
         description: error.message || "Failed to mark notifications as read.",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      setOptimisticallyCleared(false);
     }
   });
 
-  // Mark notification as read when dropdown is opened
-  useEffect(() => {
-    if (isOpen && notifications?.some(n => !n.isRead)) {
-      markAllAsReadMutation.mutate();
-    }
-  }, [isOpen, notifications]);
-
-  // Count unread notifications
-  const unreadCount = notifications?.filter(notification => !notification.isRead).length || 0;
+  // Only show unread notifications in the dropdown
+  const unreadNotifications = optimisticallyCleared
+    ? []
+    : notifications?.filter(n => !n.isRead) || [];
+  const unreadCount = unreadNotifications.length;
 
   // Get notification icon based on type
   const getNotificationIcon = (type: string) => {
@@ -71,6 +71,10 @@ export function NotificationsDropdown() {
         return <Package className="h-4 w-4 text-[#42A5F5]" />;
       case 'rating_received':
         return <Star className="h-4 w-4 text-[#FFC107]" />;
+      case 'expiry_warning':
+        return <AlertCircle className="h-4 w-4 text-[#FF9800]" />;
+      case 'claim':
+        return <Check className="h-4 w-4 text-[#4CAF50]" />;
       default:
         return <Bell className="h-4 w-4 text-[#9E9E9E]" />;
     }
@@ -92,12 +96,19 @@ export function NotificationsDropdown() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[320px] p-0">
         <div className="flex justify-between items-center p-3 bg-[#FAFAFA]">
-          <h3 className="font-opensans font-semibold text-[#424242]">Notifications</h3>
+          <div className="flex items-center gap-2">
+            {/* Gold bell icon */}
+            <Bell className="h-5 w-5 text-[#FFC107]" />
+            <h3 className="font-opensans font-semibold text-[#424242]">Notifications</h3>
+          </div>
           {notifications && notifications.length > 0 && (
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => markAllAsReadMutation.mutate()}
+              onClick={() => {
+                setOptimisticallyCleared(true);
+                markAllAsReadMutation.mutate();
+              }}
               disabled={markAllAsReadMutation.isPending}
               className="h-8 text-xs"
             >
@@ -114,37 +125,49 @@ export function NotificationsDropdown() {
             <div className="flex justify-center items-center p-6">
               <Loader2 className="h-6 w-6 animate-spin text-[#9E9E9E]" />
             </div>
-          ) : !notifications || notifications.length === 0 ? (
+          ) : unreadNotifications.length === 0 ? (
             <div className="text-center py-8 px-4 text-[#9E9E9E]">
               <Bell className="h-10 w-10 mx-auto mb-2 text-[#E0E0E0]" />
-              <p>No notifications yet</p>
+              <p>No new notifications</p>
               <p className="text-sm mt-1">Check back later for updates</p>
             </div>
           ) : (
-            notifications.map((notification) => (
-              <DropdownMenuItem key={notification.id} asChild>
-                <Link 
-                  href={notification.link || '#'}
-                  className={cn(
-                    "flex items-start gap-3 p-3 cursor-pointer hover:bg-[#F5F5F5]",
-                    !notification.isRead && "bg-[#E8F5E9]"
-                  )}
-                >
-                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-[#F5F5F5] rounded-full">
-                    {getNotificationIcon(notification.type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-[#424242] whitespace-normal break-words">
-                      {notification.content}
-                    </p>
-                    <div className="flex items-center mt-1 text-xs text-[#9E9E9E]">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+            unreadNotifications.map((notification) => {
+              // Fallback link based on relatedType/relatedId
+              let link = '#';
+              if (notification.relatedType === 'claim' && notification.relatedId) {
+                link = `/claims/${notification.relatedId}`;
+              } else if (notification.relatedType === 'post' && notification.relatedId) {
+                link = `/posts/${notification.relatedId}`;
+              }
+              return (
+                <DropdownMenuItem key={notification.id} asChild>
+                  <Link 
+                    href={link}
+                    className={cn(
+                      "flex items-start gap-3 p-3 cursor-pointer hover:bg-[#F5F5F5]",
+                      !notification.isRead && "bg-[#E8F5E9]"
+                    )}
+                  >
+                    <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-[#F5F5F5] rounded-full">
+                      {getNotificationIcon(notification.type)}
                     </div>
-                  </div>
-                </Link>
-              </DropdownMenuItem>
-            ))
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-[#424242] whitespace-normal break-words font-semibold">
+                        {notification.title}
+                      </p>
+                      <p className="text-xs text-[#757575] whitespace-normal break-words">
+                        {notification.message}
+                      </p>
+                      <div className="flex items-center mt-1 text-xs text-[#9E9E9E]">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                      </div>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+              );
+            })
           )}
         </div>
         

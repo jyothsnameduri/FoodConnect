@@ -61,9 +61,8 @@ export const foodPosts = pgTable("food_posts", {
   quantity: text("quantity").notNull(),
   category: text("category", { enum: foodCategories }).notNull(),
   dietary: json("dietary").$type<DietaryOption[]>().default([]),
-  address: text("address").notNull(),
-  latitude: doublePrecision("latitude"),
-  longitude: doublePrecision("longitude"),
+  latitude: doublePrecision("latitude").notNull(),
+  longitude: doublePrecision("longitude").notNull(),
   // Removed pickupStartTime and pickupEndTime fields
   expiryTime: timestamp("expiry_time").notNull(),
   status: text("status", { enum: postStatuses }).default("available").notNull(),
@@ -215,35 +214,32 @@ export const messagesRelations = relations(messages, ({ one }) => ({
 // Schema for inserting a new food post
 export const insertFoodPostSchema = createInsertSchema(foodPosts).omit({
   id: true,
+  userId: true,
   status: true,
   createdAt: true,
   updatedAt: true,
-  // Only expiryTime remains as a date field, but we'll make it optional
   expiryTime: true,
 }).extend({
   status: z.string().optional(),
   type: z.string().optional(),
-  // Make expiryTime optional with a default value
-  // Use a more robust preprocess to handle different date formats
+  latitude: z.number({ required_error: "Latitude is required" }),
+  longitude: z.number({ required_error: "Longitude is required" }),
   expiryTime: z.preprocess(
     (val) => {
-      // Handle string dates (ISO format from client)
       if (typeof val === 'string') {
         const date = new Date(val);
-        // Check if the date is valid
         if (isNaN(date.getTime())) {
           throw new Error('Invalid date format for expiryTime');
         }
         return date;
       }
-      // Pass through Date objects
       return val;
     },
     z.date({
       required_error: "Expiry date is required",
       invalid_type_error: "Expiry date must be a valid date"
     }).optional().default(() => new Date(Date.now() + 172800000))
-  ), // Default to day after tomorrow
+  ),
 });
 
 // Schema for updating a food post

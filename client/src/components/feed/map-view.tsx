@@ -4,22 +4,50 @@ import { FoodPost } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, MapPin } from "lucide-react";
+import MapGL, { Marker } from 'react-map-gl';
+import { Link } from "wouter";
 
-export function MapView() {
+const MAPBOX_TOKEN = 'pk.eyJ1IjoibmFuaS0wMDciLCJhIjoiY21hYnppcDlrMjYwZzJ3c2JqOHdhYmVpbCJ9.f2Ok8ZFGgkuAJyIYlQZxNA';
+
+export function MapView({ filters }: { filters: any }) {
   const [mapLoaded, setMapLoaded] = useState(false);
   
+  // Build query params from filters
+  const queryParams = new URLSearchParams();
+  if (filters?.type && filters.type !== 'all') queryParams.set('type', filters.type);
+  if (filters?.distance) queryParams.set('distance', filters.distance.toString());
+  if (filters?.category && filters.category.length > 0) queryParams.set('category', filters.category.join(','));
+  if (filters?.dietary && filters.dietary.length > 0) queryParams.set('dietary', filters.dietary.join(','));
+  if (filters?.expiryWithin) queryParams.set('expiryWithin', filters.expiryWithin.toString());
+
+  const apiUrl = `/api/posts?${queryParams.toString()}`;
+
   const { data: posts, isLoading, error } = useQuery<FoodPost[]>({
-    queryKey: ["/api/posts"],
+    queryKey: ["/api/posts", filters],
+    queryFn: async () => {
+      const res = await fetch(apiUrl);
+      if (!res.ok) throw new Error('Failed to fetch posts');
+      return res.json();
+    },
   });
   
-  // Map would be initialized here with a useEffect
+  // Track which pin/card wrapper is hovered
+  const [hoveredPostId, setHoveredPostId] = useState<number | null>(null);
+
+  // Center the map on the first post, or use a default location
+  const defaultLat = posts && posts.length > 0 ? posts[0].latitude : 20.5937;
+  const defaultLng = posts && posts.length > 0 ? posts[0].longitude : 78.9629;
+
+  const [viewport, setViewport] = useState({
+    latitude: defaultLat,
+    longitude: defaultLng,
+    zoom: 4,
+  });
+
   useEffect(() => {
-    // This is a placeholder for actual map initialization
-    // In a real implementation, you would initialize a map library like Google Maps or Leaflet
     const timer = setTimeout(() => {
       setMapLoaded(true);
-    }, 1500);
-    
+    }, 500); // faster load for real map
     return () => clearTimeout(timer);
   }, []);
 
@@ -73,60 +101,64 @@ export function MapView() {
     );
   }
 
-  // In a real implementation, you would render a map with markers for each post
-  // This is a placeholder that mimics what a map might look like
   return (
     <div className="relative bg-[#F5F5F5] rounded-soft overflow-hidden h-[600px]">
-      {/* Map placeholder */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-blue-100">
-        <div className="absolute inset-0 bg-repeat opacity-20" style={{ backgroundImage: "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48cGF0aCBzdHJva2U9IiNDQ0MiIHN0cm9rZS13aWR0aD0iLjUiIGQ9Ik0uMjUuMjVoMTkuNXYxOS41SC4yNXoiLz48cGF0aCBmaWxsPSIjRUVFIiBkPSJNNSA1aDEwdjEwSDV6Ii8+PC9nPjwvc3ZnPg==')" }}></div>
-      </div>
-      
-      {/* Map markers */}
-      {posts.slice(0, 10).map((post, index) => (
-        <div 
-          key={post.id}
-          className={`absolute w-8 h-8 flex items-center justify-center rounded-full transform -translate-x-1/2 -translate-y-1/2 cursor-pointer shadow-md
-            ${post.type === 'donation' ? 'bg-[#4CAF50] text-white' : 'bg-[#42A5F5] text-white'}
-          `}
-          style={{
-            // Generate random positions for the demo
-            left: `${20 + (index * 7) % 80}%`,
-            top: `${15 + (index * 11) % 70}%`,
-            zIndex: 10,
-          }}
-          title={post.title}
-        >
-          <MapPin className="h-4 w-4" />
-        </div>
-      ))}
-      
-      {/* Map controls */}
-      <div className="absolute top-4 right-4 bg-white rounded-soft shadow-soft p-2 flex flex-col space-y-2">
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <span className="text-[#424242] font-bold">+</span>
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <span className="text-[#424242] font-bold">−</span>
-        </Button>
-      </div>
-      
-      {/* Location button */}
-      <div className="absolute bottom-4 right-4">
-        <Button 
-          className="bg-white text-[#424242] hover:bg-gray-100 shadow-soft"
-          size="sm"
-        >
-          <MapPin className="mr-2 h-4 w-4" />
-          Use my location
-        </Button>
-      </div>
-      
-      <div className="absolute bottom-4 left-4 bg-white rounded-soft shadow-soft p-3">
-        <p className="text-sm text-[#9E9E9E]">
-          {posts.length} items in this area
-        </p>
-      </div>
+      <MapGL
+        width="100%"
+        height="600px"
+        latitude={viewport.latitude}
+        longitude={viewport.longitude}
+        zoom={viewport.zoom}
+        mapboxApiAccessToken={MAPBOX_TOKEN}
+        onViewportChange={setViewport}
+        mapStyle="mapbox://styles/mapbox/streets-v11"
+      >
+        {posts.map((post) => (
+          <Marker
+            key={post.id}
+            latitude={post.latitude}
+            longitude={post.longitude}
+            offsetLeft={-16}
+            offsetTop={-32}
+          >
+            <div
+              onMouseEnter={() => setHoveredPostId(post.id)}
+              onMouseLeave={() => setHoveredPostId(null)}
+              style={{ position: 'relative', display: 'inline-block' }}
+            >
+              <div
+                title={post.title}
+                className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md cursor-pointer
+                  ${post.type === 'donation' ? 'bg-[#4CAF50] text-white' : 'bg-[#42A5F5] text-white'}
+                `}
+              >
+                <MapPin className="h-4 w-4" />
+              </div>
+              {hoveredPostId === post.id && (
+                <Link
+                  href={`/posts/${post.id}`}
+                  className="absolute left-1/2 bottom-full mb-2 w-64 bg-white rounded-lg shadow-lg p-3 z-50 border border-gray-200 cursor-pointer hover:bg-[#F5F5F5] transition-colors"
+                  style={{ transform: 'translateX(-50%)', textDecoration: 'none' }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="font-semibold text-[#424242] text-base mb-1">{post.title}</div>
+                  <div className="text-xs text-[#9E9E9E] mb-1 line-clamp-2">{post.description}</div>
+                  <div className="flex justify-between text-xs text-[#757575] mb-1">
+                    <span>Qty: {post.quantity}</span>
+                    <span>{post.category.replace('_', ' ')}</span>
+                  </div>
+                  <div className="text-xs text-[#757575]">
+                    Expiry: {post.expiryTime ? new Date(post.expiryTime).toLocaleString() : 'N/A'}
+                  </div>
+                  <div className="mt-2 text-center">
+                    <span className="inline-block bg-[#4CAF50] text-white text-xs px-3 py-1 rounded-full font-semibold">View & Claim</span>
+                  </div>
+                </Link>
+              )}
+            </div>
+          </Marker>
+        ))}
+      </MapGL>
     </div>
   );
 }
